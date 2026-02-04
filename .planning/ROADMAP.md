@@ -52,6 +52,15 @@ Plans:
 - MATRIX-05: Merchant can assign a shared matrix to one or more products
 - MATRIX-06: Each product links to at most one matrix
 
+**Plans:** 5 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Database schema (matrix models) and Settings page (unit preference)
+- [ ] 02-02-PLAN.md — Matrix list page (EmptyState/IndexTable) and create matrix page (templates)
+- [ ] 02-03-PLAN.md — Matrix editor with spreadsheet-style grid editing and validation
+- [ ] 02-04-PLAN.md — Product assignment via Shopify Resource Picker
+- [ ] 02-05-PLAN.md — Human verification of complete matrix management flow
+
 **Success Criteria:**
 1. Merchant can create a new matrix with width breakpoints (e.g., 12, 24, 36 inches) and height breakpoints (e.g., 12, 24, 36 inches) through the dashboard
 2. Merchant can set a price at each (width, height) intersection and see a visual grid of all prices
@@ -142,7 +151,7 @@ Plans:
 | Phase | Status | Requirements | Completion |
 |-------|--------|--------------|------------|
 | **1. Foundation & Authentication** | Complete | 4 | 100% |
-| **2. Admin Matrix Management** | Pending | 6 | 0% |
+| **2. Admin Matrix Management** | Planned | 6 | 0% |
 | **3. Draft Orders Integration** | Pending | 1 | 0% |
 | **4. Public REST API** | Pending | 4 | 0% |
 | **5. React Widget (npm Package)** | Pending | 5 | 0% |
