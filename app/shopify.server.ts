@@ -8,10 +8,6 @@ import {
 import { PostgreSQLSessionStorage } from "@shopify/shopify-app-session-storage-postgresql";
 import { restResources } from "@shopify/shopify-api/rest/admin/2024-01";
 
-const sessionStorage = new PostgreSQLSessionStorage(
-  process.env.DATABASE_URL || ""
-);
-
 const shopify = shopifyApp({
   apiKey: process.env.SHOPIFY_API_KEY || "",
   apiSecretKey: process.env.SHOPIFY_API_SECRET || "",
@@ -19,7 +15,9 @@ const shopify = shopifyApp({
   scopes: process.env.SCOPES?.split(",") || [],
   appUrl: process.env.SHOPIFY_APP_URL || "",
   authPathPrefix: "/auth",
-  sessionStorage,
+  sessionStorage: new PostgreSQLSessionStorage(
+    process.env.DATABASE_URL || "",
+  ),
   distribution: AppDistribution.AppStore,
   restResources,
   webhooks: {
@@ -42,7 +40,6 @@ const shopify = shopifyApp({
   },
   hooks: {
     afterAuth: async ({ session }) => {
-      // Register webhooks after OAuth
       shopify.registerWebhooks({ session });
     },
   },
@@ -52,10 +49,6 @@ const shopify = shopifyApp({
 });
 
 export default shopify;
-export const apiVersion = ApiVersion.January24;
 export const addDocumentResponseHeaders = shopify.addDocumentResponseHeaders;
 export const authenticate = shopify.authenticate;
-export const unauthenticated = shopify.unauthenticated;
 export const login = shopify.login;
-export const registerWebhooks = shopify.registerWebhooks;
-export const shopifySessionStorage = sessionStorage;

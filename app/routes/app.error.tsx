@@ -1,14 +1,6 @@
-import { Page, Card, Button, BlockStack, Text } from "@shopify/polaris";
-import { useNavigate } from "@remix-run/react";
+import { Page, Card, Button, BlockStack, Text, InlineStack, List } from "@shopify/polaris";
 
 export default function ErrorPage() {
-  const navigate = useNavigate();
-
-  const handleRetry = () => {
-    // Redirect back to auth flow
-    window.location.href = "/auth/login";
-  };
-
   return (
     <Page title="Installation Error">
       <BlockStack gap="500">
@@ -18,25 +10,22 @@ export default function ErrorPage() {
               Something went wrong
             </Text>
             <Text variant="bodyMd" as="p" tone="subdued">
-              We encountered an error during the installation process. This usually happens when:
+              We couldn't complete the installation. This usually resolves by
+              trying again. Common causes include:
             </Text>
-            <ul style={{ marginLeft: "1.5rem" }}>
-              <li>OAuth authentication failed or was cancelled</li>
-              <li>Required permissions were not granted</li>
-              <li>Network connection was interrupted</li>
-            </ul>
-            <BlockStack gap="300">
-              <Button onClick={handleRetry} variant="primary">
+            <List type="bullet">
+              <List.Item>OAuth authentication failed or was cancelled</List.Item>
+              <List.Item>Required permissions were not granted</List.Item>
+              <List.Item>Network connection was interrupted</List.Item>
+            </List>
+            <InlineStack gap="300">
+              <Button url="/auth/login" variant="primary">
                 Try installing again
               </Button>
-              <Button
-                variant="plain"
-                url="mailto:support@example.com"
-                external
-              >
+              <Button variant="plain" url="mailto:support@example.com" external>
                 Contact support
               </Button>
-            </BlockStack>
+            </InlineStack>
           </BlockStack>
         </Card>
       </BlockStack>

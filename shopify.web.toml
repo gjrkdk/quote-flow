@@ -1,0 +1,7 @@
+[commands]
+dev = "npx remix vite:dev"
+build = "npx remix vite:build"
+
+[roles]
+backend = { port = 0 }
+frontend = { port = 0, hmr_server = true }

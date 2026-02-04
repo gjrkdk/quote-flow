@@ -1,43 +1,31 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-name = "price-matrix-app"
-client_id = ""
-application_url = "https://localhost"
+client_id = "63a54e127043afc0756c9c9c6f12abc9"
+name = "Dynamic Pricing"
+application_url = "https://fagaceous-rana-carbolated.ngrok-free.dev"
 embedded = true
 
 [build]
 automatically_update_urls_on_dev = true
-dev_store_url = ""
+dev_store_url = "pricing-app-3.myshopify.com"
+
+[webhooks]
+api_version = "2026-01"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks"
 
 [access_scopes]
-# https://shopify.dev/docs/api/usage/access-scopes
-scopes = "write_products,read_customers,write_draft_orders"
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "write_draft_orders,read_products,write_products"
+optional_scopes = [ ]
+use_legacy_install_flow = false
 
 [auth]
 redirect_urls = [
-  "https://localhost/auth/callback",
-  "https://localhost/auth/shopify/callback",
-  "https://localhost/api/auth/callback"
+  "https://fagaceous-rana-carbolated.ngrok-free.dev/auth/callback"
 ]
-
-[webhooks]
-api_version = "2024-01"
-
-[[webhooks.subscriptions]]
-topics = [ "app/uninstalled" ]
-uri = "/webhooks"
-
-[[webhooks.subscriptions]]
-topics = [ "customers/data_request" ]
-uri = "/webhooks"
-
-[[webhooks.subscriptions]]
-topics = [ "customers/redact" ]
-uri = "/webhooks"
-
-[[webhooks.subscriptions]]
-topics = [ "shop/redact" ]
-uri = "/webhooks"
 
 [pos]
 embedded = false

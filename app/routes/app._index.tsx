@@ -1,4 +1,5 @@
-import { ActionFunctionArgs, LoaderFunctionArgs, json } from "@remix-run/node";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
+import { json } from "@remix-run/node";
 import { useLoaderData, useSubmit, useActionData } from "@remix-run/react";
 import {
   Page,
@@ -14,19 +15,28 @@ import {
   Toast,
   Frame,
 } from "@shopify/polaris";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { authenticate } from "~/shopify.server";
 import { ensureStoreExists } from "~/hooks/afterInstall.server";
 import { prisma } from "~/db.server";
-import { generateApiKey, hashApiKey, getApiKeyPrefix } from "~/utils/api-key.server";
+import {
+  generateApiKey,
+  hashApiKey,
+  getApiKeyPrefix,
+} from "~/utils/api-key.server";
+
+interface ActionResponse {
+  success: boolean;
+  message: string;
+  newApiKey: string | null;
+}
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
 
-  // Ensure store exists and get store data
   const { store, isNewInstall, apiKey } = await ensureStoreExists(
     session.shop,
-    session.accessToken
+    session.accessToken ?? "",
   );
 
   return json({
@@ -36,11 +46,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       apiKeyPrefix: store.apiKeyPrefix,
       onboardingCompleted: store.onboardingCompleted,
     },
-    newApiKey: isNewInstall ? apiKey : null,
+    newApiKey: isNewInstall ? apiKey ?? null : null,
   });
 };
 
-export const action = async ({ request }: ActionFunctionArgs) => {
+export const action = async ({
+  request,
+}: ActionFunctionArgs): Promise<ReturnType<typeof json<ActionResponse>>> => {
   const { session } = await authenticate.admin(request);
   const formData = await request.formData();
   const intent = formData.get("intent");
@@ -50,20 +62,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       where: { shop: session.shop },
       data: { onboardingCompleted: true },
     });
-
-    return json({ success: true, message: "Welcome dismissed" });
+    return json({ success: true, message: "Welcome dismissed", newApiKey: null });
   }
 
   if (intent === "regenerate-key") {
     const newApiKey = generateApiKey();
-    const apiKeyHash = hashApiKey(newApiKey);
-    const apiKeyPrefix = getApiKeyPrefix(newApiKey);
 
     await prisma.store.update({
       where: { shop: session.shop },
       data: {
-        apiKeyHash,
-        apiKeyPrefix,
+        apiKeyHash: hashApiKey(newApiKey),
+        apiKeyPrefix: getApiKeyPrefix(newApiKey),
       },
     });
 
@@ -74,7 +83,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     });
   }
 
-  return json({ success: false, message: "Invalid action" });
+  return json({ success: false, message: "Invalid action", newApiKey: null });
 };
 
 export default function Index() {
@@ -82,55 +91,34 @@ export default function Index() {
   const actionData = useActionData<typeof action>();
   const submit = useSubmit();
 
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [currentApiKey, setCurrentApiKey] = useState(newApiKey);
+  const [visibleApiKey, setVisibleApiKey] = useState<string | null>(newApiKey);
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
-  const [toastActive, setToastActive] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Handle action results
   useEffect(() => {
     if (actionData?.success) {
-      showToast(actionData.message);
-
+      setToastMessage(actionData.message);
       if (actionData.newApiKey) {
-        setCurrentApiKey(actionData.newApiKey);
-        setShowApiKey(true);
+        setVisibleApiKey(actionData.newApiKey);
         setShowRegenerateModal(false);
       }
     }
   }, [actionData]);
 
-  // Show new API key on first install
-  useEffect(() => {
-    if (newApiKey) {
-      setShowApiKey(true);
+  const handleDismissWelcome = useCallback(() => {
+    submit({ intent: "dismiss-welcome" }, { method: "post" });
+  }, [submit]);
+
+  const handleCopyApiKey = useCallback(() => {
+    if (visibleApiKey) {
+      navigator.clipboard.writeText(visibleApiKey);
+      setToastMessage("API key copied to clipboard");
     }
-  }, [newApiKey]);
+  }, [visibleApiKey]);
 
-  const showToast = (message: string) => {
-    setToastMessage(message);
-    setToastActive(true);
-  };
-
-  const handleDismissWelcome = () => {
-    const formData = new FormData();
-    formData.append("intent", "dismiss-welcome");
-    submit(formData, { method: "post" });
-  };
-
-  const handleCopyApiKey = () => {
-    if (currentApiKey) {
-      navigator.clipboard.writeText(currentApiKey);
-      showToast("API key copied to clipboard");
-    }
-  };
-
-  const handleRegenerateKey = () => {
-    const formData = new FormData();
-    formData.append("intent", "regenerate-key");
-    submit(formData, { method: "post" });
-  };
+  const handleRegenerateKey = useCallback(() => {
+    submit({ intent: "regenerate-key" }, { method: "post" });
+  }, [submit]);
 
   const maskedKey = store.apiKeyPrefix
     ? `${store.apiKeyPrefix}${"*".repeat(60)}`
@@ -140,7 +128,6 @@ export default function Index() {
     <Frame>
       <Page title="Dashboard">
         <Layout>
-          {/* Welcome Card */}
           {!store.onboardingCompleted && (
             <Layout.Section>
               <Banner
@@ -149,28 +136,34 @@ export default function Index() {
               >
                 <BlockStack gap="200">
                   <Text as="p">
-                    Welcome to Price Matrix! Follow these steps to start offering dimension-based pricing:
+                    Welcome to Price Matrix! Follow these steps to start
+                    offering dimension-based pricing:
                   </Text>
                   <BlockStack gap="100">
-                    <Text as="p">1. Create your first pricing matrix below</Text>
-                    <Text as="p">2. Copy your API key from the section below</Text>
                     <Text as="p">
-                      3. Add the widget to your storefront{" "}
-                      <a
-                        href="https://docs.example.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        (see docs)
-                      </a>
+                      1. Create your first pricing matrix below
+                    </Text>
+                    <Text as="p">
+                      2. Copy your API key from the section below
+                    </Text>
+                    <Text as="p">
+                      3. Add the widget to your storefront
                     </Text>
                   </BlockStack>
+                  <Text as="p">
+                    <a
+                      href="https://shopify.dev/docs/apps"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View documentation
+                    </a>
+                  </Text>
                 </BlockStack>
               </Banner>
             </Layout.Section>
           )}
 
-          {/* API Key Section */}
           <Layout.Section>
             <Card>
               <BlockStack gap="400">
@@ -179,27 +172,29 @@ export default function Index() {
                     API Key
                   </Text>
                   <Text as="p" tone="subdued">
-                    Use this key to authenticate API requests from your storefront.
+                    Use this key to authenticate API requests from your
+                    storefront.
                   </Text>
                 </BlockStack>
 
-                {currentApiKey ? (
+                {visibleApiKey ? (
                   <BlockStack gap="300">
                     <Banner tone="warning">
                       <Text as="p">
-                        Save this key now - you won't be able to see it again! If you lose it, you'll need to regenerate a new one.
+                        Save this key now — you won't be able to see it again.
+                        If you lose it, you'll need to regenerate a new one.
                       </Text>
                     </Banner>
                     <TextField
-                      label="Your API Key"
-                      value={currentApiKey}
+                      label="API Key"
+                      value={visibleApiKey}
                       readOnly
                       autoComplete="off"
                       labelHidden
                     />
                     <InlineStack gap="200">
                       <Button onClick={handleCopyApiKey}>Copy Key</Button>
-                      <Button onClick={() => setShowApiKey(false)}>
+                      <Button onClick={() => setVisibleApiKey(null)}>
                         Hide Key
                       </Button>
                     </InlineStack>
@@ -207,8 +202,8 @@ export default function Index() {
                 ) : (
                   <BlockStack gap="300">
                     <TextField
-                      label="Your API Key"
-                      value={showApiKey && currentApiKey ? currentApiKey : maskedKey}
+                      label="API Key"
+                      value={maskedKey}
                       readOnly
                       autoComplete="off"
                       labelHidden
@@ -224,7 +219,6 @@ export default function Index() {
             </Card>
           </Layout.Section>
 
-          {/* Matrices Empty State */}
           <Layout.Section>
             <Card>
               <BlockStack gap="400">
@@ -233,7 +227,8 @@ export default function Index() {
                     Pricing Matrices
                   </Text>
                   <Text as="p" tone="subdued">
-                    No pricing matrices yet. Create your first matrix to start offering dimension-based pricing on your products.
+                    No pricing matrices yet. Create your first matrix to start
+                    offering dimension-based pricing on your products.
                   </Text>
                 </BlockStack>
                 <InlineStack align="start">
@@ -244,7 +239,6 @@ export default function Index() {
           </Layout.Section>
         </Layout>
 
-        {/* Regenerate Modal */}
         <Modal
           open={showRegenerateModal}
           onClose={() => setShowRegenerateModal(false)}
@@ -264,20 +258,21 @@ export default function Index() {
           <Modal.Section>
             <BlockStack gap="200">
               <Text as="p">
-                This will generate a new API key and invalidate your current key.
+                This will generate a new API key and invalidate your current
+                key.
               </Text>
               <Text as="p" tone="critical">
-                Any storefront using the old key will stop working until you update it with the new key.
+                Any storefront using the old key will stop working until you
+                update it with the new key.
               </Text>
             </BlockStack>
           </Modal.Section>
         </Modal>
 
-        {/* Toast Notification */}
-        {toastActive && (
+        {toastMessage && (
           <Toast
             content={toastMessage}
-            onDismiss={() => setToastActive(false)}
+            onDismiss={() => setToastMessage(null)}
             duration={3000}
           />
         )}

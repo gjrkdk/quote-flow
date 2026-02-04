@@ -37,13 +37,9 @@ export async function ensureStoreExists(
   });
 
   if (existingStore) {
-    // Reinstall: update access token but preserve data
     await prisma.store.update({
       where: { shop },
-      data: {
-        accessToken,
-        updatedAt: new Date(),
-      },
+      data: { accessToken },
     });
 
     return {

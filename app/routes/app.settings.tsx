@@ -1,16 +1,13 @@
-import { LoaderFunctionArgs, json } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import type { LoaderFunctionArgs } from "@remix-run/node";
 import { Page, Layout, Card, Text, BlockStack } from "@shopify/polaris";
 import { authenticate } from "~/shopify.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
-  return json({});
+  return null;
 };
 
 export default function Settings() {
-  useLoaderData<typeof loader>();
-
   return (
     <Page title="Settings" backAction={{ url: "/app" }}>
       <Layout>
