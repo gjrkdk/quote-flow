@@ -1,7 +1,7 @@
 # Project State: Shopify Price Matrix App
 
 **Last Updated:** 2026-02-04
-**Status:** Phase 1 Complete — Ready for Phase 2
+**Status:** Phase 2 In Progress — Matrix Schema Complete
 
 ## Project Reference
 
@@ -9,21 +9,21 @@
 
 **What This Is:** A public Shopify app with three components: (1) embedded admin dashboard for matrix configuration, (2) REST API for headless storefronts to fetch pricing, (3) drop-in React widget for easy integration. Merchants define breakpoint grids (width x height), assign them to products, and customers get real-time dimension-based pricing with checkout via Draft Orders.
 
-**Current Focus:** Phase 1 complete. All foundation infrastructure verified. Ready to begin Phase 2 (Admin Matrix Management).
+**Current Focus:** Phase 2 started. Database schema for matrices complete. Settings page with unit preference functional.
 
 ## Current Position
 
-**Phase:** 1 of 6 (Foundation & Authentication) — COMPLETE
-**Plan:** 3 of 3
-**Status:** Complete
-**Last activity:** 2026-02-04 - Completed 01-03-PLAN.md, human-verified e2e
+**Phase:** 2 of 6 (Admin Matrix Management) — IN PROGRESS
+**Plan:** 1 of 6
+**Status:** In progress
+**Last activity:** 2026-02-04 - Completed 02-01-PLAN.md (Database Schema & Settings)
 
 **Progress Bar:**
 ```
-[████                ] 15% (3/21 plans estimated complete)
+[█████               ] 19% (4/21 plans estimated complete)
 
 Phase 1: Foundation & Authentication       [██████████] 3/3 ✓
-Phase 2: Admin Matrix Management           [          ] 0/6
+Phase 2: Admin Matrix Management           [██        ] 1/6
 Phase 3: Draft Orders Integration          [          ] 0/1
 Phase 4: Public REST API                   [          ] 0/4
 Phase 5: React Widget (npm Package)        [          ] 0/5
@@ -32,7 +32,7 @@ Phase 6: Polish & App Store Preparation    [          ] 0/1
 
 ## Performance Metrics
 
-**Velocity:** 4 min/plan (3 plans completed)
+**Velocity:** 3.5 min/plan (4 plans completed)
 **Blockers:** 0
 **Active Research:** 0
 
@@ -42,6 +42,7 @@ Phase 6: Polish & App Store Preparation    [          ] 0/1
 | 01-foundation-authentication | 01 | 2026-02-04 | 5min | ✓ Complete |
 | 01-foundation-authentication | 02 | 2026-02-04 | 3min | ✓ Complete |
 | 01-foundation-authentication | 03 | 2026-02-04 | 5min | ✓ Complete |
+| 02-admin-matrix-management | 01 | 2026-02-04 | 2min | ✓ Complete |
 
 ## Accumulated Context
 
@@ -61,16 +62,20 @@ Phase 6: Polish & App Store Preparation    [          ] 0/1
 - **[01-02]** Manual welcome card dismissal: Merchants control when to dismiss (per CONTEXT.md)
 - **[01-02]** pm_ API key prefix: Industry convention for easy identification
 - **[01-03]** Polaris-styled error boundaries in both root.tsx and app.tsx for consistent UX
+- **[02-01]** Position-based cell references: Use widthPosition/heightPosition integers instead of value-based references for simpler grid logic
+- **[02-01]** Cascade deletes: Configure ON DELETE CASCADE for all matrix relations (automatic cleanup)
+- **[02-01]** One matrix per product: Unique constraint on ProductMatrix.productId enforces MATRIX-06 requirement
+- **[02-01]** Auto-save unit preference: Immediate save on change using useFetcher pattern (no separate button)
 
 **Pending:**
-- Matrix size limits (100x100 from research) - validated during Phase 2
+- Matrix size limits (100x100 from research) - validated during Phase 2 plan 02-03
 - Rate limiting strategy (in-memory vs Redis) - decided during Phase 4 planning
 - Pricing model (subscription vs one-time) - decided during Phase 6
 
 ### Open Todos
 
 **Immediate:**
-- [ ] Plan Phase 2 (Admin Matrix Management) via `/gsd:plan-phase 2`
+- [ ] Execute 02-02-PLAN.md (Matrix creation UI)
 
 **Upcoming:**
 - [ ] Research Draft Orders behavior during Phase 3 planning
@@ -97,27 +102,29 @@ From research:
 ## Session Continuity
 
 **Last session:** 2026-02-04
-**Stopped at:** Phase 1 complete, all 3 plans executed and human-verified
+**Stopped at:** Completed 02-01-PLAN.md (Database Schema & Settings)
 **Resume file:** None
 
 **What Just Happened:**
-- Completed 01-03-PLAN.md (migrations, error handling, e2e verification)
-- Applied Prisma migrations creating Store and GdprRequest tables
-- Added Polaris-styled ErrorBoundary to both root.tsx and app.tsx
-- Ran UAT: 10 tests, found 6 issues (all from missing Polaris CSS), fixed, re-verified 10/10 pass
-- Human approved full install flow end-to-end
+- Completed 02-01-PLAN.md (Database schema for matrices + Settings page)
+- Added 4 new Prisma models: PriceMatrix, Breakpoint, MatrixCell, ProductMatrix
+- Added unitPreference field to Store model (defaults to "mm")
+- Created migration 20260204220146_add_matrix_models and applied successfully
+- Built Settings page with auto-save unit preference selector (mm/cm)
+- All verification checks passed (prisma migrate status, prisma validate)
 
 **What Comes Next:**
-- Phase 2: Admin Matrix Management — create, edit, delete pricing matrices
-- Dashboard layout and empty state CTA ready for matrix creation flow
-- Database tables ready for matrix models (PriceMatrix, Breakpoint, MatrixPrice, ProductMatrix)
+- Phase 2 Plan 02: Matrix Creation UI — build the form to create new pricing matrices
+- Database models ready for CRUD operations
+- Unit preference available for display in matrix grid
+- Empty state on Dashboard ready to link to matrix creation flow
 
 **Context for Next Agent:**
-- Phase 1 fully verified by human — OAuth, dashboard, API keys, error handling all working
-- Polaris CSS properly imported in both root and app layouts
-- Navigation working (Dashboard + Settings in sidebar)
-- Database running on localhost:5400 with Store and GdprRequest tables
-- Ready for Prisma schema additions for matrix models
+- All matrix database models exist with cascade deletes configured
+- Position-based cell pattern established (widthPosition/heightPosition)
+- Settings page functional with unit preference (mm/cm)
+- Database running on localhost:5400 with all Phase 1 + 2.1 tables
+- Ready for matrix creation UI in plan 02-02
 
 ---
 *State tracked since: 2026-02-03*
