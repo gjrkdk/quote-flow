@@ -106,6 +106,13 @@ Plans:
 - API-03: Dimensions between breakpoints round up to the next higher breakpoint
 - API-04: API returns error for dimensions outside matrix range
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — API auth middleware, Zod validators, rate limiting utility
+- [ ] 04-02-PLAN.md — Product matrix lookup service and REST endpoint resource route
+- [ ] 04-03-PLAN.md — Human verification of API with curl tests
+
 **Success Criteria:**
 1. External client can send GET request to `/api/v1/products/:id/price?width=18&height=30` with valid API key and receive price response
 2. API returns 401 Unauthorized for requests without valid X-API-Key header
