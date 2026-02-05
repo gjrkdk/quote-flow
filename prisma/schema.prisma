@@ -9,16 +9,18 @@ datasource db {
 }
 
 model Store {
-  id                  String         @id @default(cuid())
-  shop                String         @unique
-  accessToken         String?
-  apiKeyHash          String?
-  apiKeyPrefix        String?
-  onboardingCompleted Boolean        @default(false)
-  unitPreference      String         @default("mm")
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
-  matrices            PriceMatrix[]
+  id                      String             @id @default(cuid())
+  shop                    String             @unique
+  accessToken             String?
+  apiKeyHash              String?
+  apiKeyPrefix            String?
+  onboardingCompleted     Boolean            @default(false)
+  unitPreference          String             @default("mm")
+  totalDraftOrdersCreated Int                @default(0)
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+  matrices                PriceMatrix[]
+  draftOrderRecords       DraftOrderRecord[]
 }
 
 model GdprRequest {
@@ -34,15 +36,16 @@ model GdprRequest {
 }
 
 model PriceMatrix {
-  id               String          @id @default(cuid())
-  storeId          String
-  name             String
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  store            Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  widthBreakpoints Breakpoint[]
-  cells            MatrixCell[]
-  products         ProductMatrix[]
+  id                String             @id @default(cuid())
+  storeId           String
+  name              String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  store             Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  widthBreakpoints  Breakpoint[]
+  cells             MatrixCell[]
+  products          ProductMatrix[]
+  draftOrderRecords DraftOrderRecord[]
 
   @@index([storeId])
 }
@@ -81,4 +84,26 @@ model ProductMatrix {
 
   @@unique([productId])
   @@index([matrixId])
+}
+
+model DraftOrderRecord {
+  id                  String      @id @default(cuid())
+  storeId             String
+  matrixId            String
+  shopifyDraftOrderId String
+  shopifyOrderName    String
+  productId           String
+  variantId           String
+  width               Float
+  height              Float
+  quantity            Int
+  calculatedPrice     Float
+  totalPrice          String
+  createdAt           DateTime    @default(now())
+  store               Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  matrix              PriceMatrix @relation(fields: [matrixId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+  @@index([matrixId])
+  @@index([shopifyDraftOrderId])
 }
