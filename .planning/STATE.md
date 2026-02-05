@@ -1,7 +1,7 @@
 # Project State: Shopify Price Matrix App
 
 **Last Updated:** 2026-02-05
-**Status:** Phase 3 Complete — Price Calculator Service Built
+**Status:** Phase 3 Complete — Draft Orders Integration Fully Delivered
 
 ## Project Reference
 
@@ -9,14 +9,14 @@
 
 **What This Is:** A public Shopify app with three components: (1) embedded admin dashboard for matrix configuration, (2) REST API for headless storefronts to fetch pricing, (3) drop-in React widget for easy integration. Merchants define breakpoint grids (width x height), assign them to products, and customers get real-time dimension-based pricing with checkout via Draft Orders.
 
-**Current Focus:** Phase 3 (Draft Orders Integration) complete. Price calculator service built with TDD. Ready for Phase 4 (Public REST API).
+**Current Focus:** Phase 3 complete. Price calculator, Draft Order service, test UI, and dashboard counter all working. Ready for Phase 4 (Public REST API).
 
 ## Current Position
 
 **Phase:** 3 of 6 (Draft Orders Integration) — COMPLETE
-**Plan:** 1 of 1 — COMPLETE
+**Plan:** 3 of 3 — COMPLETE
 **Status:** Complete
-**Last activity:** 2026-02-05 - Completed 03-01-PLAN.md (Price Calculator Service)
+**Last activity:** 2026-02-05 - Completed Phase 3 (all 3 plans + human verification)
 
 **Progress Bar:**
 ```
@@ -48,6 +48,8 @@ Phase 6: Polish & App Store Preparation    [          ] 0/1
 | 02-admin-matrix-management | 04 | 2026-02-04 | 4min | ✓ Complete |
 | 02-admin-matrix-management | 05 | 2026-02-04 | UAT | ✓ Complete |
 | 03-draft-orders-integration | 01 | 2026-02-05 | 4min | ✓ Complete |
+| 03-draft-orders-integration | 02 | 2026-02-05 | 2min | ✓ Complete |
+| 03-draft-orders-integration | 03 | 2026-02-05 | UAT | ✓ Complete |
 
 ## Accumulated Context
 
@@ -83,6 +85,8 @@ Phase 6: Polish & App Store Preparation    [          ] 0/1
 - **[02-04]** Conflict modal pattern: Two-submit pattern (detect conflicts on first submit, show modal, confirm on second submit) prevents accidental reassignments
 - **[03-01]** Breakpoint lookup algorithm: Use findIndex with dimension <= breakpoint.value for natural round-up behavior
 - **[03-01]** Pure function design: Accept MatrixData as parameter instead of querying database (enables testing without mocking)
+- **[03-03]** Custom line items for Draft Orders: Shopify ignores originalUnitPrice when variantId is present. Use title + originalUnitPrice for custom pricing.
+- **[03-03]** Dimensions in display unit: Pass dimensions directly without mm/cm conversion. Breakpoints stored in merchant's display unit.
 
 **Pending:**
 - Rate limiting strategy (in-memory vs Redis) - decided during Phase 4 planning
@@ -106,8 +110,9 @@ From research:
 1. Third-party cookies for embedded sessions - use session tokens
 2. Prisma connection exhaustion on Vercel - configure pooling from start
 3. Missing GDPR webhooks - register in Phase 1 ✓
-4. Draft Orders rate limits - implement retry logic in Phase 3
+4. Draft Orders rate limits - implement retry logic in Phase 3 ✓
 5. API without HMAC verification - design into Phase 4 from start
+6. **Shopify originalUnitPrice + variantId** - originalUnitPrice is ignored when variantId is present. Use custom line items for custom pricing.
 
 ### Lessons Learned
 
@@ -115,33 +120,35 @@ From research:
 - **[01-UAT]** Root ErrorBoundary needs its own Polaris CSS import since it renders outside the app layout
 - **[02-UAT]** In embedded Shopify apps with `unstable_newEmbeddedAuthStrategy`, never use Polaris `url` props for navigation. Always use Remix's `useNavigate` for client-side navigation to preserve session token context.
 - **[02-UAT]** Never call `navigate()` during render. Use `useEffect` or server-side `redirect()`.
+- **[03-UAT]** Shopify DraftOrderLineItemInput ignores `originalUnitPrice` when `variantId` is present. Use custom line items (title + originalUnitPrice) for matrix pricing.
+- **[03-UAT]** Breakpoints are stored in merchant's display unit. Don't convert dimensions before price calculation.
+- **[03-UAT]** Shopify protected customer data access must be configured in Partner Dashboard before using DraftOrder API.
 
 ## Session Continuity
 
 **Last session:** 2026-02-05
-**Stopped at:** Completed 03-01-PLAN.md (Price Calculator Service)
+**Stopped at:** Completed Phase 3 (Draft Orders Integration)
 **Resume file:** None
 
 **What Just Happened:**
-- Executed plan 03-01: Price Calculator Service using TDD
-- Installed vitest testing framework
-- Built calculatePrice and validateDimensions functions
-- All 25 tests passing (exact match, round up, clamping, validation)
-- Followed RED-GREEN-REFACTOR TDD cycle
-- 2 commits (feat + refactor)
+- Executed all 3 plans of Phase 3 (price calculator, DB schema, draft order service)
+- Human-verified: Draft Order #D17 created with correct $300 matrix price
+- Fixed 2 bugs during UAT: unit mismatch + originalUnitPrice ignored with variantId
+- Dashboard shows Draft Orders counter
 
 **What Comes Next:**
 - Phase 4: Public REST API — expose pricing endpoint for headless storefronts
 - Research API security patterns (HMAC verification, rate limiting)
-- Price calculator service ready for integration
+- Price calculator and Draft Order services ready for API integration
 
 **Context for Next Agent:**
-- Phase 2 fully verified (matrix CRUD, spreadsheet editor, product assignments)
-- Phase 3 complete: Price calculator service with comprehensive test coverage
-- Database: Store, GdprRequest, PriceMatrix, Breakpoint, MatrixCell, ProductMatrix
-- Services: price-calculator.server.ts with calculatePrice and validateDimensions
+- Phase 3 fully verified (price calculator, draft order creation, test UI, dashboard)
+- Database: Store, GdprRequest, PriceMatrix, Breakpoint, MatrixCell, ProductMatrix, DraftOrderRecord
+- Services: price-calculator.server.ts, draft-order.server.ts
+- Key pattern: Custom line items for Draft Orders (not variantId + originalUnitPrice)
 - All navigation uses Remix useNavigate (not Polaris url props) for embedded app compatibility
 - Database running on localhost:5400
+- exponential-backoff package installed for API retry logic
 
 ---
 *State tracked since: 2026-02-03*
