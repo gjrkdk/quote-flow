@@ -497,19 +497,16 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
       );
     }
 
-    // Convert dimensions to mm if unit is cm
-    const widthInMm = store.unitPreference === "cm" ? width * 10 : width;
-    const heightInMm = store.unitPreference === "cm" ? height * 10 : height;
-
-    // Create draft order
+    // Pass dimensions as-is (in the same unit as breakpoints are stored)
+    // Breakpoints are stored in the merchant's display unit, so no conversion needed for price calculation
     const result = await createDraftOrder({
       admin,
       storeId: store.id,
       matrixId: id,
       productId,
       productTitle: productMatrix.productTitle,
-      width: widthInMm,
-      height: heightInMm,
+      width,
+      height,
       quantity,
       unitPreference: store.unitPreference,
     });

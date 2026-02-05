@@ -20,8 +20,8 @@ export interface CreateDraftOrderInput {
   productId: string; // GID format
   variantId?: string; // GID format — optional, will query if not provided
   productTitle: string;
-  width: number; // in mm (internal unit)
-  height: number; // in mm (internal unit)
+  width: number; // in merchant's display unit (same unit as breakpoints)
+  height: number; // in merchant's display unit (same unit as breakpoints)
   quantity: number;
   unitPreference: string; // "mm" or "cm" for display
 }
@@ -78,17 +78,14 @@ async function getProductVariant(
 
 /**
  * Formats a dimension value for display based on unit preference.
+ * Value is already in the merchant's display unit (same as breakpoints).
  *
- * @param valueInMm - Dimension value in millimeters
+ * @param value - Dimension value in merchant's display unit
  * @param unit - Unit preference ("mm" or "cm")
  * @returns Formatted string (e.g., "180mm" or "18cm")
  */
-function formatDimension(valueInMm: number, unit: string): string {
-  if (unit === "cm") {
-    const valueInCm = valueInMm / 10;
-    return `${valueInCm}cm`;
-  }
-  return `${valueInMm}mm`;
+function formatDimension(value: number, unit: string): string {
+  return `${value}${unit}`;
 }
 
 /**
