@@ -79,6 +79,13 @@ Plans:
 **Requirements:**
 - ORDER-01: Draft Order created via Shopify GraphQL API with custom locked price
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Price calculator service (TDD) with breakpoint lookup and dimension validation
+- [ ] 03-02-PLAN.md — DraftOrderRecord database schema and migration
+- [ ] 03-03-PLAN.md — Draft Order creation service, test flow UI, and dashboard counter
+
 **Success Criteria:**
 1. System can create a Draft Order for a product with matrix pricing using a specified width and height
 2. Draft Order displays the calculated price (not the product's default price) as the line item price
