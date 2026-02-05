@@ -1,7 +1,7 @@
 # Project State: Shopify Price Matrix App
 
 **Last Updated:** 2026-02-05
-**Status:** Phase 3 Complete — Draft Orders Integration Fully Delivered
+**Status:** Phase 4 In Progress — Public REST API Foundation Complete
 
 ## Project Reference
 
@@ -9,30 +9,30 @@
 
 **What This Is:** A public Shopify app with three components: (1) embedded admin dashboard for matrix configuration, (2) REST API for headless storefronts to fetch pricing, (3) drop-in React widget for easy integration. Merchants define breakpoint grids (width x height), assign them to products, and customers get real-time dimension-based pricing with checkout via Draft Orders.
 
-**Current Focus:** Phase 3 complete. Price calculator, Draft Order service, test UI, and dashboard counter all working. Ready for Phase 4 (Public REST API).
+**Current Focus:** Phase 4 in progress. Plan 04-01 complete (API auth, validation, rate limiting). Ready for Plan 04-02 (REST endpoint).
 
 ## Current Position
 
-**Phase:** 3 of 6 (Draft Orders Integration) — COMPLETE
-**Plan:** 3 of 3 — COMPLETE
-**Status:** Complete
-**Last activity:** 2026-02-05 - Completed Phase 3 (all 3 plans + human verification)
+**Phase:** 4 of 6 (Public REST API) — IN PROGRESS
+**Plan:** 1 of 4 — COMPLETE
+**Status:** In progress
+**Last activity:** 2026-02-05 - Completed 04-01-PLAN.md (API auth and validation foundation)
 
 **Progress Bar:**
 ```
-[██████████          ] 52% (11/21 requirements complete)
+[████████████▌       ] 57% (12/21 requirements complete)
 
 Phase 1: Foundation & Authentication       [██████████] 3/3 ✓
 Phase 2: Admin Matrix Management           [██████████] 5/5 ✓
 Phase 3: Draft Orders Integration          [██████████] 1/1 ✓
-Phase 4: Public REST API                   [          ] 0/4
+Phase 4: Public REST API                   [██▌       ] 1/4
 Phase 5: React Widget (npm Package)        [          ] 0/5
 Phase 6: Polish & App Store Preparation    [          ] 0/1
 ```
 
 ## Performance Metrics
 
-**Velocity:** 3.1 min/plan (9 plans completed)
+**Velocity:** 3.0 min/plan (10 plans completed)
 **Blockers:** 0
 **Active Research:** 0
 
@@ -50,6 +50,7 @@ Phase 6: Polish & App Store Preparation    [          ] 0/1
 | 03-draft-orders-integration | 01 | 2026-02-05 | 4min | ✓ Complete |
 | 03-draft-orders-integration | 02 | 2026-02-05 | 2min | ✓ Complete |
 | 03-draft-orders-integration | 03 | 2026-02-05 | UAT | ✓ Complete |
+| 04-public-rest-api | 01 | 2026-02-05 | 2min | ✓ Complete |
 
 ## Accumulated Context
 
@@ -87,18 +88,22 @@ Phase 6: Polish & App Store Preparation    [          ] 0/1
 - **[03-01]** Pure function design: Accept MatrixData as parameter instead of querying database (enables testing without mocking)
 - **[03-03]** Custom line items for Draft Orders: Shopify ignores originalUnitPrice when variantId is present. Use title + originalUnitPrice for custom pricing.
 - **[03-03]** Dimensions in display unit: Pass dimensions directly without mm/cm conversion. Breakpoints stored in merchant's display unit.
+- **[04-01]** Zod for API input validation: Use z.coerce.number() for automatic string-to-number conversion in query params
+- **[04-01]** RFC 7807 error format for all API responses: Consistent machine-readable error structure with type, title, status, detail fields
+- **[04-01]** In-memory rate limiting: 100 requests per 15-minute window per store, single-instance only (Redis migration needed for multi-instance)
+- **[04-01]** Product ID normalization to GID format: Always normalize to gid://shopify/Product/{id} for consistency with ProductMatrix table
+- **[04-01]** Same error message for enumeration prevention: Return "Invalid API key" for both missing store and wrong key to prevent enumeration attacks
 
 **Pending:**
-- Rate limiting strategy (in-memory vs Redis) - decided during Phase 4 planning
 - Pricing model (subscription vs one-time) - decided during Phase 6
 
 ### Open Todos
 
 **Immediate:**
-- [ ] Plan Phase 4 (Public REST API) via `/gsd:plan-phase 4`
+- [ ] Execute Plan 04-02 (REST endpoint implementation)
 
 **Upcoming:**
-- [ ] Research API security patterns (HMAC, rate limiting) during Phase 4 planning
+- [ ] Research widget packaging patterns during Phase 5 planning
 
 ### Known Blockers
 
@@ -127,28 +132,31 @@ From research:
 ## Session Continuity
 
 **Last session:** 2026-02-05
-**Stopped at:** Completed Phase 3 (Draft Orders Integration)
+**Stopped at:** Completed 04-01-PLAN.md (API auth and validation foundation)
 **Resume file:** None
 
 **What Just Happened:**
-- Executed all 3 plans of Phase 3 (price calculator, DB schema, draft order service)
-- Human-verified: Draft Order #D17 created with correct $300 matrix price
-- Fixed 2 bugs during UAT: unit mismatch + originalUnitPrice ignored with variantId
-- Dashboard shows Draft Orders counter
+- Executed Plan 04-01: Created API authentication, validation, and rate limiting utilities
+- Installed zod@4.3.6 for input validation with coercion
+- Created authenticateApiKey middleware with timing-safe comparison
+- Created in-memory rate limiter (100 req/15min per store)
+- All error responses follow RFC 7807 format
 
 **What Comes Next:**
-- Phase 4: Public REST API — expose pricing endpoint for headless storefronts
-- Research API security patterns (HMAC verification, rate limiting)
-- Price calculator and Draft Order services ready for API integration
+- Plan 04-02: REST endpoint implementation (GET /api/prices/:productId)
+- Compose authenticateApiKey + checkRateLimit + price calculation
+- Use PriceQuerySchema for query parameter validation
+- Return price response with rate limit headers
 
 **Context for Next Agent:**
-- Phase 3 fully verified (price calculator, draft order creation, test UI, dashboard)
-- Database: Store, GdprRequest, PriceMatrix, Breakpoint, MatrixCell, ProductMatrix, DraftOrderRecord
-- Services: price-calculator.server.ts, draft-order.server.ts
-- Key pattern: Custom line items for Draft Orders (not variantId + originalUnitPrice)
-- All navigation uses Remix useNavigate (not Polaris url props) for embedded app compatibility
+- Phase 4 Plan 01 complete: Authentication, validation, and rate limiting foundation ready
+- New utilities: authenticateApiKey, checkRateLimit, PriceQuerySchema, ProductIdSchema, normalizeProductId
+- Existing services: price-calculator.server.ts (calculatePrice), draft-order.server.ts
+- Database: Store (with apiKeyHash), PriceMatrix, ProductMatrix, Breakpoint, MatrixCell
+- All error responses use RFC 7807 format (type, title, status, detail)
+- Rate limiting is in-memory (single-instance only, Redis migration needed for multi-instance)
 - Database running on localhost:5400
-- exponential-backoff package installed for API retry logic
+- Dependencies: zod@4.3.6, exponential-backoff
 
 ---
 *State tracked since: 2026-02-03*
