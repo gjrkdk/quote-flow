@@ -9,8 +9,8 @@ import {
   Text,
   Modal,
   BlockStack,
+  InlineStack,
   Button,
-  Box,
 } from "@shopify/polaris";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { authenticate } from "~/shopify.server";
@@ -281,26 +281,28 @@ export default function MatricesIndex() {
       </IndexTable.Cell>
       <IndexTable.Cell>
         <div onClick={(e) => e.stopPropagation()}>
-          <Button
-            variant="plain"
-            size="slim"
-            onClick={() => handleDuplicateClick(matrix.id)}
-            loading={
-              fetcher.state === "submitting" &&
-              fetcher.formData?.get("matrixId") === matrix.id &&
-              fetcher.formData?.get("intent") === "duplicate"
-            }
-          >
-            Duplicate
-          </Button>
-          <Button
-            variant="plain"
-            size="slim"
-            tone="critical"
-            onClick={() => handleDeleteClick(matrix)}
-          >
-            Delete
-          </Button>
+          <InlineStack gap="300">
+            <Button
+              variant="plain"
+              size="slim"
+              onClick={() => handleDuplicateClick(matrix.id)}
+              loading={
+                fetcher.state === "submitting" &&
+                fetcher.formData?.get("matrixId") === matrix.id &&
+                fetcher.formData?.get("intent") === "duplicate"
+              }
+            >
+              Duplicate
+            </Button>
+            <Button
+              variant="plain"
+              size="slim"
+              tone="critical"
+              onClick={() => handleDeleteClick(matrix)}
+            >
+              Delete
+            </Button>
+          </InlineStack>
         </div>
       </IndexTable.Cell>
     </IndexTable.Row>
@@ -314,25 +316,22 @@ export default function MatricesIndex() {
         onAction: () => navigate("/app/matrices/new"),
       }}
     >
-      <Box paddingInline={{ xs: "200", md: "400" }}>
-        <Card padding="0">
-          <IndexTable
-            resourceName={{ singular: "matrix", plural: "matrices" }}
-            itemCount={matrices.length}
-            headings={[
-              { title: "Name" },
-              { title: "Grid size" },
-              { title: "Products" },
-              { title: "Last edited" },
-              { title: "Actions" },
-            ]}
-            selectable={false}
-            condensed
-          >
-            {rowMarkup}
-          </IndexTable>
-        </Card>
-      </Box>
+      <Card padding="0">
+        <IndexTable
+          resourceName={{ singular: "matrix", plural: "matrices" }}
+          itemCount={matrices.length}
+          headings={[
+            { title: "Name" },
+            { title: "Grid size" },
+            { title: "Products" },
+            { title: "Last edited" },
+            { title: "Actions" },
+          ]}
+          selectable={false}
+        >
+          {rowMarkup}
+        </IndexTable>
+      </Card>
 
       <Modal
         open={deleteModalOpen}
