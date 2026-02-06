@@ -57,11 +57,13 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
     // 4. Validate query parameters
     const url = new URL(request.url);
-    const queryParams = {
-      width: url.searchParams.get("width"),
-      height: url.searchParams.get("height"),
-      quantity: url.searchParams.get("quantity"),
-    };
+    const queryParams: Record<string, string> = {};
+    const widthParam = url.searchParams.get("width");
+    const heightParam = url.searchParams.get("height");
+    const quantityParam = url.searchParams.get("quantity");
+    if (widthParam !== null) queryParams.width = widthParam;
+    if (heightParam !== null) queryParams.height = heightParam;
+    if (quantityParam !== null) queryParams.quantity = quantityParam;
 
     const queryValidation = PriceQuerySchema.safeParse(queryParams);
     if (!queryValidation.success) {
