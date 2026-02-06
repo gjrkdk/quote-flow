@@ -1,7 +1,7 @@
 # Project State: Shopify Price Matrix App
 
 **Last Updated:** 2026-02-06
-**Status:** Phase 6 In Progress — Accessibility & Responsive UI Complete
+**Status:** Phase 6 Complete — All Polish & App Store Preparation Complete
 
 ## Project Reference
 
@@ -9,30 +9,30 @@
 
 **What This Is:** A public Shopify app with three components: (1) embedded admin dashboard for matrix configuration, (2) REST API for headless storefronts to fetch pricing, (3) drop-in React widget for easy integration. Merchants define breakpoint grids (width x height), assign them to products, and customers get real-time dimension-based pricing with checkout via Draft Orders.
 
-**Current Focus:** Phase 6 in progress. Plans 06-01 (CSV parser), 06-02 (Freemium billing), and 06-03 (Accessibility & Responsive UI) complete. Ready for final App Store preparation.
+**Current Focus:** Phase 6 complete. All plans finished: 06-01 (CSV parser), 06-02 (Freemium billing), 06-03 (Accessibility & Responsive UI), 06-04 (CSV Import & Freemium Gating). Ready for App Store submission.
 
 ## Current Position
 
 **Phase:** 6 of 6 (Polish & App Store Preparation)
-**Plan:** 3 of 4 complete
-**Status:** In progress
-**Last activity:** 2026-02-06 - Completed 06-03-PLAN.md (Accessibility & Responsive UI)
+**Plan:** 4 of 4 complete
+**Status:** Phase complete
+**Last activity:** 2026-02-06 - Completed 06-04-PLAN.md (CSV Import & Freemium Gating)
 
 **Progress Bar:**
 ```
-[████████████████████] 95% (22/23 requirements complete)
+[█████████████████████] 100% (23/23 requirements complete)
 
 Phase 1: Foundation & Authentication       [██████████] 3/3 ✓
 Phase 2: Admin Matrix Management           [██████████] 5/5 ✓
 Phase 3: Draft Orders Integration          [██████████] 3/3 ✓
 Phase 4: Public REST API                   [██████████] 3/3 ✓
 Phase 5: React Widget (npm Package)        [██████████] 4/4 ✓
-Phase 6: Polish & App Store Preparation    [███████░░░] 3/4
+Phase 6: Polish & App Store Preparation    [██████████] 4/4 ✓
 ```
 
 ## Performance Metrics
 
-**Velocity:** 7.0 min/plan (20 plans completed)
+**Velocity:** 6.6 min/plan (21 plans completed)
 **Blockers:** 0
 **Active Research:** 0
 
@@ -60,6 +60,7 @@ Phase 6: Polish & App Store Preparation    [███████░░░] 3/4
 | 06-polish-app-store-preparation | 01 | 2026-02-06 | 2min | ✓ Complete |
 | 06-polish-app-store-preparation | 02 | 2026-02-06 | 3min | ✓ Complete |
 | 06-polish-app-store-preparation | 03 | 2026-02-06 | 2min | ✓ Complete |
+| 06-polish-app-store-preparation | 04 | 2026-02-06 | 4min | ✓ Complete |
 
 ## Accumulated Context
 
@@ -137,6 +138,12 @@ Phase 6: Polish & App Store Preparation    [███████░░░] 3/4
 - **[06-03]** W3C ARIA grid pattern with roving tabindex: App Store requires WCAG 2.1 AA compliance. ARIA grid pattern provides full keyboard navigation for matrix editor.
 - **[06-03]** Polaris Grid for responsive dashboard layout: Built-in Shopify component with consistent breakpoints (xs/sm/md/lg/xl) for 2-column desktop, 1-column tablet/mobile.
 - **[06-03]** Preserve horizontal scroll on matrix grid: Existing decision from Phase 2. Large grids need horizontal scroll on small screens; ARIA pattern doesn't conflict with scrolling.
+- **[06-04]** CSV Import as 4th template option: Added alongside Small, Medium, Custom templates for clear selection in ChoiceList
+- **[06-04]** Freemium UI pattern: Free merchants see upgrade banner instead of file upload, paid merchants get full CSV import flow
+- **[06-04]** CSV preview before creation: Show parsed grid with dimensions and prices to catch errors before database commit
+- **[06-04]** Multi-intent form pattern: Single action handler routes upgrade, preview_csv, confirm_csv, create via intent parameter
+- **[06-04]** Client-side CSV reading: FileReader API reads file as text, avoids multipart/form-data complexity
+- **[06-04]** Matrix limit enforcement for all templates: canCreateMatrix check applied to create and confirm_csv intents (prevents free-tier bypass)
 
 **Pending:**
 - None
@@ -176,28 +183,30 @@ From research:
 ## Session Continuity
 
 **Last session:** 2026-02-06
-**Stopped at:** Completed 06-03-PLAN.md (Accessibility & Responsive UI)
+**Stopped at:** Completed 06-04-PLAN.md (CSV Import & Freemium Gating)
 **Resume file:** None
 
 **What Just Happened:**
-- Executed Plan 06-03: Accessibility & Responsive UI
-- Added WCAG 2.1 AA accessibility to MatrixGrid: ARIA grid role, roving tabindex, full keyboard navigation
-- Implemented keyboard handlers: Arrow keys, Tab/Shift+Tab with row wrapping, Enter/Escape, Home/End
-- Added screen reader labels (aria-label) to all price inputs
-- Made dashboard responsive with Polaris Grid (2-column desktop, 1-column tablet/mobile)
-- Made matrix list responsive with Box padding and condensed IndexTable
-- Preserved horizontal scroll on matrix grid for large grids on small screens
-- Task commits: f3eaace (ARIA grid navigation), fa01f7b (responsive layouts)
+- Executed Plan 06-04: CSV Import & Freemium Gating
+- Added CSV Import as 4th template option in create matrix page
+- Implemented file upload with DropZone for paid merchants
+- Added upgrade banner for free merchants (CSV is paid feature)
+- Built CSV preview flow with grid display, error list, and validation
+- Created matrix from CSV via Prisma transaction (breakpoints + cells)
+- Enforced free-tier limit (1 matrix) for ALL templates (Small, Medium, Custom, CSV)
+- Added upgrade flow via Shopify billing.require() redirect
+- Task commit: 6d67999 (feat)
 
 **What Comes Next:**
-- Continue Phase 6: Polish & App Store Preparation (Plan 04)
-- Plan 04: Final App Store preparation (listing content, screenshots, submission docs)
+- Phase 6 complete! All 4 plans finished.
+- All project requirements complete (23/23 = 100%)
+- Ready for App Store submission and production deployment
 
 **Context for Next Agent:**
-- MatrixGrid now WCAG 2.1 AA compliant with full keyboard navigation
-- Dashboard and matrix list are responsive across desktop/tablet/mobile
-- All accessibility requirements met for App Store submission
-- Phase 6 nearly complete (3/4 plans done)
+- CSV import feature complete with preview and error handling
+- Freemium business model enforced across all matrix creation paths
+- All 6 phases complete: Foundation → Admin → Orders → API → Widget → Polish
+- App is production-ready
 
 ---
 *State tracked since: 2026-02-03*
