@@ -1,9 +1,6 @@
-import { authenticate } from "~/shopify.server";
-
 // Billing plan constants
 export const PLAN_NAME = "UNLIMITED_PLAN";
 export const PLAN_PRICE = "$12/month";
-export const FREE_MATRIX_LIMIT = 1;
 export const PLAN_FEATURES = ["Unlimited matrices", "CSV import"];
 
 interface BillingStatusResult {
@@ -28,18 +25,12 @@ interface CanCreateMatrixResult {
  * Check if the store has an active paid plan subscription
  */
 export async function checkBillingStatus(
-  request: Request,
+  _request: Request,
 ): Promise<BillingStatusResult> {
-  const { billing } = await authenticate.admin(request);
-
-  const { hasActivePayment } = await billing.check({
-    plans: [PLAN_NAME],
-    isTest: process.env.NODE_ENV !== "production",
-  });
-
+  // TODO: re-enable billing checks when freemium is restored
   return {
-    hasActivePayment,
-    needsUpgrade: !hasActivePayment,
+    hasActivePayment: true,
+    needsUpgrade: false,
   };
 }
 
@@ -69,25 +60,9 @@ export async function requirePaidPlan(
  * Check if store can create a new matrix based on current count and billing status
  */
 export async function canCreateMatrix(
-  request: Request,
-  currentMatrixCount: number,
+  _request: Request,
+  _currentMatrixCount: number,
 ): Promise<CanCreateMatrixResult> {
-  // Free tier allows 1 matrix
-  if (currentMatrixCount < FREE_MATRIX_LIMIT) {
-    return { allowed: true };
-  }
-
-  // Check if they have paid plan for unlimited matrices
-  const { hasActivePayment } = await checkBillingStatus(request);
-
-  if (hasActivePayment) {
-    return { allowed: true };
-  }
-
-  // Free tier limit reached
-  return {
-    allowed: false,
-    reason: "free_limit",
-    limit: FREE_MATRIX_LIMIT,
-  };
+  // TODO: re-enable billing checks when freemium is restored
+  return { allowed: true };
 }

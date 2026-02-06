@@ -8,103 +8,130 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum BreakpointAxis {
+  width
+  height
+
+  @@map("breakpoint_axis")
+}
+
+enum UnitPreference {
+  mm
+  cm
+
+  @@map("unit_preference")
+}
+
+enum GdprRequestType {
+  CUSTOMERS_DATA_REQUEST
+  CUSTOMERS_REDACT
+  SHOP_REDACT
+
+  @@map("gdpr_request_type")
+}
+
 model Store {
   id                      String             @id @default(cuid())
   shop                    String             @unique
-  accessToken             String?
-  apiKeyHash              String?
-  apiKeyPrefix            String?
-  onboardingCompleted     Boolean            @default(false)
-  unitPreference          String             @default("mm")
+  accessToken             String?            @map("access_token")
+  apiKeyHash              String?            @map("api_key_hash")
+  apiKeyPrefix            String?            @map("api_key_prefix")
+  onboardingCompleted     Boolean            @default(false) @map("onboarding_completed")
+  unitPreference          UnitPreference     @default(mm) @map("unit_preference")
   currency                String             @default("USD")
-  totalDraftOrdersCreated Int                @default(0)
-  createdAt               DateTime           @default(now())
-  updatedAt               DateTime           @updatedAt
+  totalDraftOrdersCreated Int                @default(0) @map("total_draft_orders_created")
+  createdAt               DateTime           @default(now()) @map("created_at")
+  updatedAt               DateTime           @updatedAt @map("updated_at")
   matrices                PriceMatrix[]
   draftOrderRecords       DraftOrderRecord[]
+
+  @@map("stores")
 }
 
 model GdprRequest {
-  id          String    @id @default(cuid())
+  id          Int              @id @default(autoincrement())
   shop        String
-  type        String
+  type        GdprRequestType
   payload     Json
-  processedAt DateTime?
-  createdAt   DateTime  @default(now())
+  processedAt DateTime?        @map("processed_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
 
   @@index([shop])
   @@index([type])
+  @@map("gdpr_requests")
 }
 
 model PriceMatrix {
   id                String             @id @default(cuid())
-  storeId           String
+  storeId           String             @map("store_id")
   name              String
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
   store             Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  widthBreakpoints  Breakpoint[]
+  breakpoints       Breakpoint[]
   cells             MatrixCell[]
   products          ProductMatrix[]
   draftOrderRecords DraftOrderRecord[]
 
   @@index([storeId])
+  @@map("price_matrices")
 }
 
 model Breakpoint {
-  id       String      @id @default(cuid())
-  matrixId String
-  axis     String
+  id       Int            @id @default(autoincrement())
+  matrixId String         @map("matrix_id")
+  axis     BreakpointAxis
   value    Float
   position Int
-  matrix   PriceMatrix @relation(fields: [matrixId], references: [id], onDelete: Cascade)
+  matrix   PriceMatrix    @relation(fields: [matrixId], references: [id], onDelete: Cascade)
 
   @@unique([matrixId, axis, value])
-  @@index([matrixId, axis])
+  @@map("breakpoints")
 }
 
 model MatrixCell {
-  id             String      @id @default(cuid())
-  matrixId       String
-  widthPosition  Int
-  heightPosition Int
+  id             Int         @id @default(autoincrement())
+  matrixId       String      @map("matrix_id")
+  widthPosition  Int         @map("width_position")
+  heightPosition Int         @map("height_position")
   price          Float
   matrix         PriceMatrix @relation(fields: [matrixId], references: [id], onDelete: Cascade)
 
   @@unique([matrixId, widthPosition, heightPosition])
-  @@index([matrixId])
+  @@map("matrix_cells")
 }
 
 model ProductMatrix {
-  id           String      @id @default(cuid())
-  matrixId     String
-  productId    String
-  productTitle String
-  assignedAt   DateTime    @default(now())
+  id           Int         @id @default(autoincrement())
+  matrixId     String      @map("matrix_id")
+  productId    String      @map("product_id")
+  productTitle String      @map("product_title")
+  assignedAt   DateTime    @default(now()) @map("assigned_at")
   matrix       PriceMatrix @relation(fields: [matrixId], references: [id], onDelete: Cascade)
 
   @@unique([productId])
   @@index([matrixId])
+  @@map("product_matrices")
 }
 
 model DraftOrderRecord {
-  id                  String      @id @default(cuid())
-  storeId             String
-  matrixId            String
-  shopifyDraftOrderId String
-  shopifyOrderName    String
-  productId           String
-  variantId           String
+  id                  Int         @id @default(autoincrement())
+  storeId             String      @map("store_id")
+  matrixId            String      @map("matrix_id")
+  shopifyDraftOrderId String      @map("shopify_draft_order_id")
+  shopifyOrderName    String      @map("shopify_order_name")
+  productId           String      @map("product_id")
   width               Float
   height              Float
   quantity            Int
-  calculatedPrice     Float
-  totalPrice          String
-  createdAt           DateTime    @default(now())
+  calculatedPrice     Float       @map("calculated_price")
+  totalPrice          Float       @map("total_price")
+  createdAt           DateTime    @default(now()) @map("created_at")
   store               Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
   matrix              PriceMatrix @relation(fields: [matrixId], references: [id], onDelete: Cascade)
 
   @@index([storeId])
   @@index([matrixId])
   @@index([shopifyDraftOrderId])
+  @@map("draft_order_records")
 }

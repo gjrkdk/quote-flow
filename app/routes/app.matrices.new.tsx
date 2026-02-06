@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { useLoaderData, Form, useActionData, useNavigation, useNavigate, useFetcher } from "@remix-run/react";
+import { useLoaderData, useNavigate, useFetcher } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -17,6 +17,7 @@ import {
   List,
 } from "@shopify/polaris";
 import { useState, useCallback } from "react";
+import { BreakpointAxis, UnitPreference } from "@prisma/client";
 import { authenticate } from "~/shopify.server";
 import { prisma } from "~/db.server";
 import { parseMatrixCSV } from "~/services/csv-parser.server";
@@ -113,9 +114,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     // Parse the CSV
     const parseResult = await parseMatrixCSV(csvContent);
 
+    // Convert Map to plain object for JSON serialization (Map becomes {} via JSON.stringify)
+    const cellsObj: Record<string, number> = {};
+    parseResult.cells.forEach((value, key) => {
+      cellsObj[key] = value;
+    });
+
     return json({
       intent: "preview_csv",
-      preview: parseResult,
+      preview: { ...parseResult, cells: cellsObj },
     });
   }
 
@@ -197,7 +204,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       // 2. Create width breakpoints from parsed data
       const widthBreakpoints = parseResult.widths.map((value, index) => ({
         matrixId: matrix.id,
-        axis: "width",
+        axis: BreakpointAxis.width,
         value,
         position: index,
       }));
@@ -205,7 +212,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       // 3. Create height breakpoints from parsed data
       const heightBreakpoints = parseResult.heights.map((value, index) => ({
         matrixId: matrix.id,
-        axis: "height",
+        axis: BreakpointAxis.height,
         value,
         position: index,
       }));
@@ -285,17 +292,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       const templateDef = TEMPLATE_BREAKPOINTS_MM[template as "small" | "medium"];
 
       // Use store's unit preference to determine breakpoint values
-      const widths = store.unitPreference === "cm"
+      const widths = store.unitPreference === UnitPreference.cm
         ? mmToCm(templateDef.widths)
         : templateDef.widths;
-      const heights = store.unitPreference === "cm"
+      const heights = store.unitPreference === UnitPreference.cm
         ? mmToCm(templateDef.heights)
         : templateDef.heights;
 
       // 3. Create width breakpoints
       const widthBreakpoints = widths.map((value, index) => ({
         matrixId: matrix.id,
-        axis: "width",
+        axis: BreakpointAxis.width,
         value,
         position: index,
       }));
@@ -303,7 +310,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       // 4. Create height breakpoints
       const heightBreakpoints = heights.map((value, index) => ({
         matrixId: matrix.id,
-        axis: "height",
+        axis: BreakpointAxis.height,
         value,
         position: index,
       }));
@@ -339,9 +346,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 export default function NewMatrix() {
   const { unitPreference, canCreate, hasPaidPlan } = useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>();
-  const navigation = useNavigation();
   const navigate = useNavigate();
+  const fetcher = useFetcher<typeof action>();
   const upgradeFetcher = useFetcher();
 
   const [name, setName] = useState("");
@@ -350,8 +356,9 @@ export default function NewMatrix() {
   const [fileName, setFileName] = useState<string>("");
   const [showErrors, setShowErrors] = useState(false);
 
-  const isSubmitting = navigation.state === "submitting";
+  const isSubmitting = fetcher.state === "submitting" || fetcher.state === "loading";
   const isUpgrading = upgradeFetcher.state === "submitting";
+  const actionData = fetcher.data;
 
   // Handle file drop
   const handleDrop = useCallback(
@@ -390,8 +397,9 @@ export default function NewMatrix() {
   };
 
   // Check if we're showing CSV preview
+  // After JSON serialization, cells is a plain object (not a Map)
   const preview = actionData && "intent" in actionData && actionData.intent === "preview_csv"
-    ? (actionData.preview as CSVParseResult)
+    ? (actionData.preview as Omit<CSVParseResult, "cells"> & { cells: Record<string, number> })
     : null;
 
   // Reset to upload state
@@ -523,7 +531,7 @@ export default function NewMatrix() {
                             </th>
                             {preview.widths.map((_, widthIdx) => {
                               const cellKey = `${widthIdx},${heightIdx}`;
-                              const price = preview.cells.get(cellKey);
+                              const price = preview.cells[cellKey];
                               return (
                                 <td key={widthIdx} style={{
                                   border: "1px solid #ddd",
@@ -541,22 +549,22 @@ export default function NewMatrix() {
                   </div>
                 )}
 
-                <Form method="post">
-                  <input type="hidden" name="intent" value="confirm_csv" />
-                  <input type="hidden" name="name" value={name} />
-                  <input type="hidden" name="csvContent" value={csvContent || ""} />
-                  <InlineStack gap="300">
-                    <Button onClick={resetUpload}>Cancel</Button>
-                    <Button
-                      variant="primary"
-                      submit
-                      disabled={!preview.success || isSubmitting}
-                      loading={isSubmitting}
-                    >
-                      Create Matrix
-                    </Button>
-                  </InlineStack>
-                </Form>
+                <InlineStack gap="300">
+                  <Button onClick={resetUpload}>Cancel</Button>
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      fetcher.submit(
+                        { intent: "confirm_csv", name, csvContent: csvContent || "" },
+                        { method: "post" }
+                      );
+                    }}
+                    disabled={!preview.success || isSubmitting}
+                    loading={isSubmitting}
+                  >
+                    Create Matrix
+                  </Button>
+                </InlineStack>
               </BlockStack>
             </Card>
           </Layout.Section>
@@ -564,8 +572,7 @@ export default function NewMatrix() {
 
         {/* Main form - hidden when showing preview */}
         {!preview && (
-          <Form method="post">
-            <input type="hidden" name="intent" value="create" />
+          <>
             <Layout.Section>
               <Card>
                 <BlockStack gap="400">
@@ -573,7 +580,6 @@ export default function NewMatrix() {
                     label="Matrix name"
                     value={name}
                     onChange={setName}
-                    name="name"
                     autoComplete="off"
                     maxLength={100}
                     placeholder="e.g., Premium Poster Pricing"
@@ -612,7 +618,6 @@ export default function NewMatrix() {
                       ]}
                       selected={template}
                       onChange={(value) => setTemplate(value as Template[])}
-                      name="template"
                     />
                     <Text as="p" tone="subdued" variant="bodySm">
                       {getTemplatePreview(template[0])}
@@ -660,13 +665,18 @@ export default function NewMatrix() {
                                 Selected: {fileName}
                               </Text>
                               {csvContent && (
-                                <Form method="post">
-                                  <input type="hidden" name="intent" value="preview_csv" />
-                                  <input type="hidden" name="csvContent" value={csvContent} />
-                                  <Button submit variant="primary">
-                                    Preview
-                                  </Button>
-                                </Form>
+                                <Button
+                                  variant="primary"
+                                  onClick={() => {
+                                    fetcher.submit(
+                                      { intent: "preview_csv", csvContent },
+                                      { method: "post" }
+                                    );
+                                  }}
+                                  loading={isSubmitting}
+                                >
+                                  Preview
+                                </Button>
                               )}
                             </InlineStack>
                           )}
@@ -685,7 +695,12 @@ export default function NewMatrix() {
                   <Button onClick={() => navigate("/app/matrices")}>Cancel</Button>
                   <Button
                     variant="primary"
-                    submit
+                    onClick={() => {
+                      fetcher.submit(
+                        { intent: "create", name, template: template[0] },
+                        { method: "post" }
+                      );
+                    }}
                     loading={isSubmitting}
                     disabled={!name.trim() || isSubmitting || !canCreate.allowed}
                   >
@@ -694,7 +709,7 @@ export default function NewMatrix() {
                 </InlineStack>
               </Layout.Section>
             )}
-          </Form>
+          </>
         )}
       </Layout>
     </Page>

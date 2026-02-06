@@ -6,10 +6,12 @@ interface MatrixGridProps {
   cells: Map<string, number>;
   unit: string;
   onCellChange: (col: number, row: number, value: number | null) => void;
-  onAddWidthBreakpoint: (value: number) => void;
-  onAddHeightBreakpoint: (value: number) => void;
+  onAddWidthBreakpoint: () => void;
+  onAddHeightBreakpoint: () => void;
   onRemoveWidthBreakpoint: (index: number) => void;
   onRemoveHeightBreakpoint: (index: number) => void;
+  onWidthBreakpointChange: (index: number, value: number) => void;
+  onHeightBreakpointChange: (index: number, value: number) => void;
   emptyCells: Set<string>;
 }
 
@@ -23,6 +25,8 @@ export const MatrixGrid = React.memo(function MatrixGrid({
   onAddHeightBreakpoint,
   onRemoveWidthBreakpoint,
   onRemoveHeightBreakpoint,
+  onWidthBreakpointChange,
+  onHeightBreakpointChange,
   emptyCells,
 }: MatrixGridProps) {
   // Roving tabindex state for keyboard navigation
@@ -47,30 +51,57 @@ export const MatrixGrid = React.memo(function MatrixGrid({
       cell.focus();
     }
   }, [focusedRow, focusedCol]);
-  const handleAddWidthBreakpoint = () => {
-    const value = prompt("Enter width breakpoint value:");
-    if (value === null) return;
+  // Track which breakpoint header was just added so we can auto-focus it
+  const [newWidthIndex, setNewWidthIndex] = useState<number | null>(null);
+  const [newHeightIndex, setNewHeightIndex] = useState<number | null>(null);
+  const widthHeaderRefs = useRef<Map<number, HTMLInputElement>>(new Map());
+  const heightHeaderRefs = useRef<Map<number, HTMLInputElement>>(new Map());
 
-    const numValue = parseFloat(value);
-    if (isNaN(numValue) || numValue <= 0) {
-      alert("Please enter a positive number");
-      return;
+  // Auto-focus newly added breakpoint header
+  useEffect(() => {
+    if (newWidthIndex !== null) {
+      const input = widthHeaderRefs.current.get(newWidthIndex);
+      if (input) {
+        input.focus();
+        input.select();
+      }
+      setNewWidthIndex(null);
     }
+  }, [newWidthIndex]);
 
-    onAddWidthBreakpoint(numValue);
+  useEffect(() => {
+    if (newHeightIndex !== null) {
+      const input = heightHeaderRefs.current.get(newHeightIndex);
+      if (input) {
+        input.focus();
+        input.select();
+      }
+      setNewHeightIndex(null);
+    }
+  }, [newHeightIndex]);
+
+  const handleAddWidthBreakpoint = () => {
+    setNewWidthIndex(widthBreakpoints.length);
+    onAddWidthBreakpoint();
   };
 
   const handleAddHeightBreakpoint = () => {
-    const value = prompt("Enter height breakpoint value:");
-    if (value === null) return;
+    setNewHeightIndex(heightBreakpoints.length);
+    onAddHeightBreakpoint();
+  };
 
+  const handleWidthHeaderChange = (index: number, value: string) => {
     const numValue = parseFloat(value);
-    if (isNaN(numValue) || numValue <= 0) {
-      alert("Please enter a positive number");
-      return;
+    if (!isNaN(numValue) && numValue >= 0) {
+      onWidthBreakpointChange(index, numValue);
     }
+  };
 
-    onAddHeightBreakpoint(numValue);
+  const handleHeightHeaderChange = (index: number, value: string) => {
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue) && numValue >= 0) {
+      onHeightBreakpointChange(index, numValue);
+    }
   };
 
   const handleCellChange = (col: number, row: number, value: string) => {
@@ -222,12 +253,46 @@ export const MatrixGrid = React.memo(function MatrixGrid({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    gap: "8px",
+                    gap: "4px",
                   }}
                 >
-                  <span>
-                    {bp} {unit}
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "2px", flex: 1 }}>
+                    <input
+                      ref={(el) => {
+                        if (el) {
+                          widthHeaderRefs.current.set(index, el);
+                        } else {
+                          widthHeaderRefs.current.delete(index);
+                        }
+                      }}
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={bp || ""}
+                      onChange={(e) => handleWidthHeaderChange(index, e.target.value)}
+                      aria-label={`Width breakpoint ${index + 1}`}
+                      placeholder="0"
+                      style={{
+                        width: "60px",
+                        textAlign: "right",
+                        border: "1px solid transparent",
+                        borderRadius: "4px",
+                        background: "transparent",
+                        fontSize: "14px",
+                        fontWeight: 600,
+                        padding: "2px 4px",
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = "#2c6ecb";
+                        e.currentTarget.style.background = "#fff";
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = "transparent";
+                        e.currentTarget.style.background = "transparent";
+                      }}
+                    />
+                    <span style={{ fontSize: "14px", fontWeight: 600 }}>{unit}</span>
+                  </div>
                   {widthBreakpoints.length > 1 && (
                     <button
                       type="button"
@@ -293,12 +358,46 @@ export const MatrixGrid = React.memo(function MatrixGrid({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    gap: "8px",
+                    gap: "4px",
                   }}
                 >
-                  <span>
-                    {heightBp} {unit}
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "2px", flex: 1 }}>
+                    <input
+                      ref={(el) => {
+                        if (el) {
+                          heightHeaderRefs.current.set(rowIndex, el);
+                        } else {
+                          heightHeaderRefs.current.delete(rowIndex);
+                        }
+                      }}
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={heightBp || ""}
+                      onChange={(e) => handleHeightHeaderChange(rowIndex, e.target.value)}
+                      aria-label={`Height breakpoint ${rowIndex + 1}`}
+                      placeholder="0"
+                      style={{
+                        width: "60px",
+                        textAlign: "right",
+                        border: "1px solid transparent",
+                        borderRadius: "4px",
+                        background: "transparent",
+                        fontSize: "14px",
+                        fontWeight: 600,
+                        padding: "2px 4px",
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = "#2c6ecb";
+                        e.currentTarget.style.background = "#fff";
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = "transparent";
+                        e.currentTarget.style.background = "transparent";
+                      }}
+                    />
+                    <span style={{ fontSize: "14px", fontWeight: 600 }}>{unit}</span>
+                  </div>
                   {heightBreakpoints.length > 1 && (
                     <button
                       type="button"

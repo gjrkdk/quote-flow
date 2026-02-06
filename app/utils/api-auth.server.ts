@@ -1,3 +1,4 @@
+import type { UnitPreference } from "@prisma/client";
 import { json } from "@remix-run/node";
 import { prisma } from "~/db.server";
 import { verifyApiKey, getApiKeyPrefix } from "~/utils/api-key.server";
@@ -8,7 +9,7 @@ import { verifyApiKey, getApiKeyPrefix } from "~/utils/api-key.server";
 export interface AuthenticatedStore {
   id: string;
   shop: string;
-  unitPreference: string;
+  unitPreference: UnitPreference;
 }
 
 /**

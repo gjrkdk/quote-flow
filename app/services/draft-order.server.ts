@@ -5,6 +5,7 @@
  * Handles price calculation, dimension validation, API retries, and local record keeping.
  */
 
+import { BreakpointAxis } from "@prisma/client";
 import { backOff } from "exponential-backoff";
 import { prisma } from "~/db.server";
 import {
@@ -18,7 +19,6 @@ export interface CreateDraftOrderInput {
   storeId: string;
   matrixId: string;
   productId: string; // GID format
-  variantId?: string; // GID format — optional, will query if not provided
   productTitle: string;
   width: number; // in merchant's display unit (same unit as breakpoints)
   height: number; // in merchant's display unit (same unit as breakpoints)
@@ -42,53 +42,12 @@ export interface SubmitDraftOrderInput {
   storeId: string;
   matrixId: string;
   productId: string;
-  variantId: string;
   productTitle: string;
   width: number;
   height: number;
   quantity: number;
   unitPrice: number;
   unit: string; // "mm" or "cm" for display
-}
-
-/**
- * Queries Shopify for the first variant of a product.
- *
- * @param admin - Shopify GraphQL admin client
- * @param productId - Product GID (e.g., "gid://shopify/Product/123")
- * @returns Variant GID or null if not found
- */
-export async function getProductVariant(
-  admin: any,
-  productId: string
-): Promise<string | null> {
-  const response = await admin.graphql(
-    `#graphql
-      query GetProductVariant($productId: ID!) {
-        product(id: $productId) {
-          variants(first: 1) {
-            edges {
-              node {
-                id
-              }
-            }
-          }
-        }
-      }`,
-    {
-      variables: { productId },
-    }
-  );
-
-  const data = await response.json();
-
-  if (data.errors) {
-    console.error("GraphQL errors:", data.errors);
-    return null;
-  }
-
-  const variant = data.data?.product?.variants?.edges?.[0]?.node;
-  return variant?.id || null;
 }
 
 function formatDimension(value: number, unit: string): string {
@@ -110,7 +69,6 @@ export async function submitDraftOrder(
     storeId,
     matrixId,
     productId,
-    variantId,
     productTitle,
     width,
     height,
@@ -223,12 +181,11 @@ export async function submitDraftOrder(
           shopifyDraftOrderId: draftOrder.id,
           shopifyOrderName: draftOrder.name,
           productId,
-          variantId,
           width,
           height,
           quantity,
           calculatedPrice: unitPrice,
-          totalPrice: draftOrder.totalPrice,
+          totalPrice: parseFloat(draftOrder.totalPrice),
         },
       });
 
@@ -281,7 +238,6 @@ export async function createDraftOrder(
     storeId,
     matrixId,
     productId,
-    variantId: inputVariantId,
     productTitle,
     width,
     height,
@@ -293,7 +249,7 @@ export async function createDraftOrder(
   const matrix = await prisma.priceMatrix.findUnique({
     where: { id: matrixId, storeId },
     include: {
-      widthBreakpoints: true,
+      breakpoints: true,
       cells: true,
     },
   });
@@ -302,13 +258,13 @@ export async function createDraftOrder(
     return { success: false, error: "Matrix not found" };
   }
 
-  const widthBreakpoints = matrix.widthBreakpoints
-    .filter((bp) => bp.axis === "width")
+  const widthBreakpoints = matrix.breakpoints
+    .filter((bp) => bp.axis === BreakpointAxis.width)
     .sort((a, b) => a.position - b.position)
     .map((bp) => ({ position: bp.position, value: bp.value }));
 
-  const heightBreakpoints = matrix.widthBreakpoints
-    .filter((bp) => bp.axis === "height")
+  const heightBreakpoints = matrix.breakpoints
+    .filter((bp) => bp.axis === BreakpointAxis.height)
     .sort((a, b) => a.position - b.position)
     .map((bp) => ({ position: bp.position, value: bp.value }));
 
@@ -340,23 +296,12 @@ export async function createDraftOrder(
     };
   }
 
-  // Step 4: Get variant ID if not provided
-  let variantId = inputVariantId;
-  if (!variantId) {
-    const fetchedVariantId = await getProductVariant(admin, productId);
-    if (!fetchedVariantId) {
-      return { success: false, error: "Product variant not found" };
-    }
-    variantId = fetchedVariantId;
-  }
-
-  // Step 5: Delegate to shared submitDraftOrder
+  // Step 4: Delegate to shared submitDraftOrder
   return submitDraftOrder({
     admin,
     storeId,
     matrixId,
     productId,
-    variantId,
     productTitle,
     width,
     height,

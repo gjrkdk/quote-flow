@@ -17,10 +17,7 @@ import {
   calculatePrice,
   validateDimensions,
 } from "~/services/price-calculator.server";
-import {
-  submitDraftOrder,
-  getProductVariant,
-} from "~/services/draft-order.server";
+import { submitDraftOrder } from "~/services/draft-order.server";
 import { prisma } from "~/db.server";
 
 /**
@@ -197,21 +194,7 @@ export async function action({ request }: ActionFunctionArgs) {
       storeWithToken.accessToken
     );
 
-    // 9. Get product variant (for local record keeping)
-    const variantId = await getProductVariant(admin, normalizedProductId);
-    if (!variantId) {
-      throw json(
-        {
-          type: "about:blank",
-          title: "Not Found",
-          status: 404,
-          detail: "Product variant not found",
-        },
-        { status: 404 }
-      );
-    }
-
-    // 10. Get product title from database
+    // 9. Get product title from database
     const productMatrixRecord = await prisma.productMatrix.findUnique({
       where: { productId: normalizedProductId },
       select: { productTitle: true, matrixId: true },
@@ -229,13 +212,12 @@ export async function action({ request }: ActionFunctionArgs) {
       );
     }
 
-    // 11. Submit Draft Order via shared service
+    // 10. Submit Draft Order via shared service
     const result = await submitDraftOrder({
       admin,
       storeId: store.id,
       matrixId: productMatrixRecord.matrixId,
       productId: normalizedProductId,
-      variantId,
       productTitle: productMatrixRecord.productTitle,
       width,
       height,
@@ -256,7 +238,7 @@ export async function action({ request }: ActionFunctionArgs) {
       );
     }
 
-    // 12. Return success response with CORS and rate limit headers
+    // 11. Return success response with CORS and rate limit headers
     const rateLimitHeaders = getRateLimitHeaders(store.id);
 
     const response = json(

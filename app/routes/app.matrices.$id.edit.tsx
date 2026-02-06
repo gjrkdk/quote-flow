@@ -13,6 +13,7 @@ import {
   Select,
 } from "@shopify/polaris";
 import { useState, useEffect, useCallback } from "react";
+import { BreakpointAxis } from "@prisma/client";
 import { authenticate } from "~/shopify.server";
 import { prisma } from "~/db.server";
 import { MatrixGrid } from "~/components/MatrixGrid";
@@ -59,7 +60,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const matrix = await prisma.priceMatrix.findUnique({
     where: { id, storeId: store.id },
     include: {
-      widthBreakpoints: { orderBy: { position: "asc" } },
+      breakpoints: { orderBy: { position: "asc" } },
       cells: true,
       products: { orderBy: { assignedAt: "desc" } },
       _count: { select: { products: true } },
@@ -71,13 +72,13 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   }
 
   // Separate breakpoints by axis
-  const widthBreakpoints = matrix.widthBreakpoints
-    .filter((bp) => bp.axis === "width")
+  const widthBreakpoints = matrix.breakpoints
+    .filter((bp) => bp.axis === BreakpointAxis.width)
     .sort((a, b) => a.position - b.position)
     .map((bp) => bp.value);
 
-  const heightBreakpoints = matrix.widthBreakpoints
-    .filter((bp) => bp.axis === "height")
+  const heightBreakpoints = matrix.breakpoints
+    .filter((bp) => bp.axis === BreakpointAxis.height)
     .sort((a, b) => a.position - b.position)
     .map((bp) => bp.value);
 
@@ -99,7 +100,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     unit: store.unitPreference,
     productCount: matrix._count.products,
     products: matrix.products.map((p) => ({
-      id: p.id,
+      id: String(p.id),
       productId: p.productId,
       productTitle: p.productTitle,
     })),
@@ -232,7 +233,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
       // 4. Create new width breakpoints
       const widthBreakpointData = sortedWidths.map((value, index) => ({
         matrixId: id,
-        axis: "width",
+        axis: BreakpointAxis.width,
         value,
         position: index,
       }));
@@ -244,7 +245,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
       // 5. Create new height breakpoints
       const heightBreakpointData = sortedHeights.map((value, index) => ({
         matrixId: id,
-        axis: "height",
+        axis: BreakpointAxis.height,
         value,
         position: index,
       }));
@@ -407,10 +408,15 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   }
 
   if (intent === "remove-product") {
-    const productMatrixId = formData.get("productMatrixId");
+    const productMatrixIdStr = formData.get("productMatrixId");
 
-    if (!productMatrixId || typeof productMatrixId !== "string") {
+    if (!productMatrixIdStr || typeof productMatrixIdStr !== "string") {
       return json({ error: "Product matrix ID is required" }, { status: 400 });
+    }
+
+    const productMatrixId = parseInt(productMatrixIdStr, 10);
+    if (isNaN(productMatrixId)) {
+      return json({ error: "Invalid product matrix ID" }, { status: 400 });
     }
 
     // Find store
@@ -591,96 +597,44 @@ export default function MatrixEdit() {
     []
   );
 
-  // Handle add width breakpoint
-  const handleAddWidthBreakpoint = useCallback(
-    (value: number) => {
-      if (widthBreakpoints.length >= 50) {
-        alert("Maximum 50 width breakpoints");
-        return;
-      }
+  // Handle add width breakpoint — appends a new column at the end
+  const handleAddWidthBreakpoint = useCallback(() => {
+    if (widthBreakpoints.length >= 50) return;
+    setWidthBreakpoints((prev) => [...prev, 0]);
+    setIsDirty(true);
+  }, [widthBreakpoints.length]);
 
-      // Add breakpoint
-      const newWidths = [...widthBreakpoints, value].sort((a, b) => a - b);
-      setWidthBreakpoints(newWidths);
+  // Handle add height breakpoint — appends a new row at the end
+  const handleAddHeightBreakpoint = useCallback(() => {
+    if (heightBreakpoints.length >= 50) return;
+    setHeightBreakpoints((prev) => [...prev, 0]);
+    setIsDirty(true);
+  }, [heightBreakpoints.length]);
 
-      // Add cells for new column
-      setCells((prev) => {
-        const newCells = new Map(prev);
-        const newColIndex = newWidths.indexOf(value);
-
-        // Shift existing cells if needed
-        if (newColIndex < newWidths.length - 1) {
-          // Need to re-index all cells
-          const tempCells = new Map<string, number>();
-          for (let row = 0; row < heightBreakpoints.length; row++) {
-            for (let col = 0; col < newWidths.length; col++) {
-              if (col === newColIndex) {
-                // New column, no value
-                continue;
-              }
-              const oldCol = col < newColIndex ? col : col - 1;
-              const oldKey = `${oldCol},${row}`;
-              const newKey = `${col},${row}`;
-              const value = prev.get(oldKey);
-              if (value !== undefined) {
-                tempCells.set(newKey, value);
-              }
-            }
-          }
-          return tempCells;
-        } else {
-          // Adding to the end
-          return newCells;
-        }
+  // Handle editing a width breakpoint header value
+  const handleWidthBreakpointChange = useCallback(
+    (index: number, value: number) => {
+      setWidthBreakpoints((prev) => {
+        const updated = [...prev];
+        updated[index] = value;
+        return updated;
       });
+      setIsDirty(true);
     },
-    [widthBreakpoints, heightBreakpoints.length]
+    []
   );
 
-  // Handle add height breakpoint
-  const handleAddHeightBreakpoint = useCallback(
-    (value: number) => {
-      if (heightBreakpoints.length >= 50) {
-        alert("Maximum 50 height breakpoints");
-        return;
-      }
-
-      // Add breakpoint
-      const newHeights = [...heightBreakpoints, value].sort((a, b) => a - b);
-      setHeightBreakpoints(newHeights);
-
-      // Add cells for new row
-      setCells((prev) => {
-        const newCells = new Map(prev);
-        const newRowIndex = newHeights.indexOf(value);
-
-        // Shift existing cells if needed
-        if (newRowIndex < newHeights.length - 1) {
-          // Need to re-index all cells
-          const tempCells = new Map<string, number>();
-          for (let col = 0; col < widthBreakpoints.length; col++) {
-            for (let row = 0; row < newHeights.length; row++) {
-              if (row === newRowIndex) {
-                // New row, no value
-                continue;
-              }
-              const oldRow = row < newRowIndex ? row : row - 1;
-              const oldKey = `${col},${oldRow}`;
-              const newKey = `${col},${row}`;
-              const value = prev.get(oldKey);
-              if (value !== undefined) {
-                tempCells.set(newKey, value);
-              }
-            }
-          }
-          return tempCells;
-        } else {
-          // Adding to the end
-          return newCells;
-        }
+  // Handle editing a height breakpoint header value
+  const handleHeightBreakpointChange = useCallback(
+    (index: number, value: number) => {
+      setHeightBreakpoints((prev) => {
+        const updated = [...prev];
+        updated[index] = value;
+        return updated;
       });
+      setIsDirty(true);
     },
-    [heightBreakpoints, widthBreakpoints.length]
+    []
   );
 
   // Handle remove width breakpoint
@@ -753,6 +707,26 @@ export default function MatrixEdit() {
 
   // Validate before save
   const validateAndSave = useCallback(() => {
+    // Check all breakpoints have valid values
+    if (widthBreakpoints.some((bp) => bp <= 0)) {
+      setValidationError("All width breakpoints must be positive numbers.");
+      return;
+    }
+    if (heightBreakpoints.some((bp) => bp <= 0)) {
+      setValidationError("All height breakpoints must be positive numbers.");
+      return;
+    }
+
+    // Check for duplicate breakpoints
+    if (new Set(widthBreakpoints).size !== widthBreakpoints.length) {
+      setValidationError("Width breakpoints must be unique.");
+      return;
+    }
+    if (new Set(heightBreakpoints).size !== heightBreakpoints.length) {
+      setValidationError("Height breakpoints must be unique.");
+      return;
+    }
+
     // Check all cells are filled
     const expectedCellCount = widthBreakpoints.length * heightBreakpoints.length;
     const empty = new Set<string>();
@@ -778,16 +752,34 @@ export default function MatrixEdit() {
     setEmptyCells(new Set());
     setValidationError(null);
 
-    // Serialize data
+    // Sort breakpoints and re-index cells to match sorted order
+    const sortedWidthIndices = widthBreakpoints
+      .map((val, idx) => ({ val, idx }))
+      .sort((a, b) => a.val - b.val);
+    const sortedHeightIndices = heightBreakpoints
+      .map((val, idx) => ({ val, idx }))
+      .sort((a, b) => a.val - b.val);
+
+    const sortedWidths = sortedWidthIndices.map((item) => item.val);
+    const sortedHeights = sortedHeightIndices.map((item) => item.val);
+
     const cellsObj: Record<string, number> = {};
-    cells.forEach((value, key) => {
-      cellsObj[key] = value;
-    });
+    for (let newCol = 0; newCol < sortedWidthIndices.length; newCol++) {
+      for (let newRow = 0; newRow < sortedHeightIndices.length; newRow++) {
+        const oldCol = sortedWidthIndices[newCol].idx;
+        const oldRow = sortedHeightIndices[newRow].idx;
+        const oldKey = `${oldCol},${oldRow}`;
+        const value = cells.get(oldKey);
+        if (value !== undefined) {
+          cellsObj[`${newCol},${newRow}`] = value;
+        }
+      }
+    }
 
     const data = {
       name,
-      widthBreakpoints,
-      heightBreakpoints,
+      widthBreakpoints: sortedWidths,
+      heightBreakpoints: sortedHeights,
       cells: cellsObj,
     };
 
@@ -930,6 +922,8 @@ export default function MatrixEdit() {
                 onAddHeightBreakpoint={handleAddHeightBreakpoint}
                 onRemoveWidthBreakpoint={handleRemoveWidthBreakpoint}
                 onRemoveHeightBreakpoint={handleRemoveHeightBreakpoint}
+                onWidthBreakpointChange={handleWidthBreakpointChange}
+                onHeightBreakpointChange={handleHeightBreakpointChange}
                 emptyCells={emptyCells}
               />
             </BlockStack>

@@ -9,6 +9,7 @@ import {
   Banner,
   BlockStack,
 } from "@shopify/polaris";
+import { UnitPreference } from "@prisma/client";
 import { authenticate } from "~/shopify.server";
 import { prisma } from "~/db.server";
 import { useEffect, useState } from "react";
@@ -38,14 +39,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   if (intent === "update-unit" && typeof unit === "string") {
     // Validate unit value
-    if (unit !== "mm" && unit !== "cm") {
+    if (unit !== UnitPreference.mm && unit !== UnitPreference.cm) {
       return json({ error: "Invalid unit value" }, { status: 400 });
     }
 
     // Update store's unit preference
     await prisma.store.update({
       where: { shop },
-      data: { unitPreference: unit },
+      data: { unitPreference: unit as UnitPreference },
     });
 
     return json({ success: true });

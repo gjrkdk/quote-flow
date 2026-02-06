@@ -5,6 +5,7 @@
  * breakpoints and cells, then transforms to MatrixData format for price calculation.
  */
 
+import { BreakpointAxis } from "@prisma/client";
 import { prisma } from "~/db.server";
 import type { MatrixData } from "~/services/price-calculator.server";
 
@@ -43,7 +44,7 @@ export async function lookupProductMatrix(
     include: {
       matrix: {
         include: {
-          widthBreakpoints: true,
+          breakpoints: true,
           cells: true,
           store: {
             select: {
@@ -67,13 +68,13 @@ export async function lookupProductMatrix(
   }
 
   // Transform to MatrixData format (same pattern as draft-order.server.ts)
-  const widthBreakpoints = productMatrix.matrix.widthBreakpoints
-    .filter((bp) => bp.axis === "width")
+  const widthBreakpoints = productMatrix.matrix.breakpoints
+    .filter((bp) => bp.axis === BreakpointAxis.width)
     .sort((a, b) => a.position - b.position)
     .map((bp) => ({ position: bp.position, value: bp.value }));
 
-  const heightBreakpoints = productMatrix.matrix.widthBreakpoints
-    .filter((bp) => bp.axis === "height")
+  const heightBreakpoints = productMatrix.matrix.breakpoints
+    .filter((bp) => bp.axis === BreakpointAxis.height)
     .sort((a, b) => a.position - b.position)
     .map((bp) => ({ position: bp.position, value: bp.value }));
 

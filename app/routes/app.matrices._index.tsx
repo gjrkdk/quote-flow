@@ -14,6 +14,7 @@ import {
   Button,
 } from "@shopify/polaris";
 import { useState, useCallback, useEffect, useRef } from "react";
+import { BreakpointAxis } from "@prisma/client";
 import { authenticate } from "~/shopify.server";
 import { prisma } from "~/db.server";
 
@@ -42,7 +43,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const matrices = await prisma.priceMatrix.findMany({
     where: { storeId: store.id },
     include: {
-      widthBreakpoints: true,
+      breakpoints: true,
       _count: { select: { products: true } },
     },
     orderBy: { updatedAt: "desc" },
@@ -50,11 +51,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   // Serialize data: count width/height breakpoints by axis
   const serialized: Matrix[] = matrices.map((matrix) => {
-    const widthCount = matrix.widthBreakpoints.filter(
-      (bp) => bp.axis === "width"
+    const widthCount = matrix.breakpoints.filter(
+      (bp) => bp.axis === BreakpointAxis.width
     ).length;
-    const heightCount = matrix.widthBreakpoints.filter(
-      (bp) => bp.axis === "height"
+    const heightCount = matrix.breakpoints.filter(
+      (bp) => bp.axis === BreakpointAxis.height
     ).length;
 
     return {
@@ -93,7 +94,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const original = await prisma.priceMatrix.findUnique({
       where: { id: matrixId },
       include: {
-        widthBreakpoints: true,
+        breakpoints: true,
         cells: true,
       },
     });
@@ -113,9 +114,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       });
 
       // Copy all breakpoints
-      if (original.widthBreakpoints.length > 0) {
+      if (original.breakpoints.length > 0) {
         await tx.breakpoint.createMany({
-          data: original.widthBreakpoints.map((bp) => ({
+          data: original.breakpoints.map((bp) => ({
             matrixId: newMatrix.id,
             axis: bp.axis,
             value: bp.value,

@@ -1,20 +1,23 @@
 import type { ActionFunctionArgs } from "@remix-run/node";
-import type { Prisma } from "@prisma/client";
+import { GdprRequestType, type Prisma } from "@prisma/client";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { topic, shop, payload } = await authenticate.webhook(request);
 
-  if (
-    topic === "CUSTOMERS_DATA_REQUEST" ||
-    topic === "CUSTOMERS_REDACT" ||
-    topic === "SHOP_REDACT"
-  ) {
+  const gdprTopicMap: Record<string, GdprRequestType> = {
+    CUSTOMERS_DATA_REQUEST: GdprRequestType.CUSTOMERS_DATA_REQUEST,
+    CUSTOMERS_REDACT: GdprRequestType.CUSTOMERS_REDACT,
+    SHOP_REDACT: GdprRequestType.SHOP_REDACT,
+  };
+
+  const gdprType = gdprTopicMap[topic];
+  if (gdprType) {
     await prisma.gdprRequest.create({
       data: {
         shop,
-        type: topic,
+        type: gdprType,
         payload: payload as Prisma.InputJsonValue,
       },
     });
@@ -28,7 +31,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     case "CUSTOMERS_REDACT":
       await prisma.gdprRequest.updateMany({
-        where: { shop, type: "CUSTOMERS_REDACT", processedAt: null },
+        where: { shop, type: GdprRequestType.CUSTOMERS_REDACT, processedAt: null },
         data: { processedAt: new Date() },
       });
       break;
@@ -36,7 +39,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     case "SHOP_REDACT":
       await prisma.store.deleteMany({ where: { shop } });
       await prisma.gdprRequest.updateMany({
-        where: { shop, type: "SHOP_REDACT", processedAt: null },
+        where: { shop, type: GdprRequestType.SHOP_REDACT, processedAt: null },
         data: { processedAt: new Date() },
       });
       break;

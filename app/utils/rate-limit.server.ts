@@ -22,19 +22,6 @@ interface RateLimitEntry {
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
 /**
- * Custom error class for rate limit exceeded
- */
-export class RateLimitError extends Error {
-  constructor(
-    message: string,
-    public retryAfter: number
-  ) {
-    super(message);
-    this.name = "RateLimitError";
-  }
-}
-
-/**
  * Checks if a request is within rate limits for the given store.
  * Throws 429 JSON response if rate limit is exceeded.
  *
