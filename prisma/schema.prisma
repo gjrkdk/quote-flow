@@ -16,6 +16,7 @@ model Store {
   apiKeyPrefix            String?
   onboardingCompleted     Boolean            @default(false)
   unitPreference          String             @default("mm")
+  currency                String             @default("USD")
   totalDraftOrdersCreated Int                @default(0)
   createdAt               DateTime           @default(now())
   updatedAt               DateTime           @updatedAt

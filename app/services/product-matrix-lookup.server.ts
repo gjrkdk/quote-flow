@@ -11,6 +11,14 @@ import type { MatrixData } from "~/services/price-calculator.server";
 export interface ProductMatrixResult {
   matrixData: MatrixData;
   matrixName: string;
+  dimensionRange: {
+    minWidth: number;
+    maxWidth: number;
+    minHeight: number;
+    maxHeight: number;
+  };
+  unit: string;
+  currency: string;
 }
 
 /**
@@ -37,6 +45,12 @@ export async function lookupProductMatrix(
         include: {
           widthBreakpoints: true,
           cells: true,
+          store: {
+            select: {
+              unitPreference: true,
+              currency: true,
+            },
+          },
         },
       },
     },
@@ -75,8 +89,22 @@ export async function lookupProductMatrix(
     cells,
   };
 
+  // Calculate dimension ranges from breakpoints
+  const minWidth = widthBreakpoints[0]?.value ?? 0;
+  const maxWidth = widthBreakpoints[widthBreakpoints.length - 1]?.value ?? 0;
+  const minHeight = heightBreakpoints[0]?.value ?? 0;
+  const maxHeight = heightBreakpoints[heightBreakpoints.length - 1]?.value ?? 0;
+
   return {
     matrixData,
     matrixName: productMatrix.matrix.name,
+    dimensionRange: {
+      minWidth,
+      maxWidth,
+      minHeight,
+      maxHeight,
+    },
+    unit: productMatrix.matrix.store.unitPreference,
+    currency: productMatrix.matrix.store.currency,
   };
 }
