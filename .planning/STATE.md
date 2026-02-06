@@ -1,7 +1,7 @@
 # Project State: Shopify Price Matrix App
 
 **Last Updated:** 2026-02-06
-**Status:** Phase 4 Complete — Public REST API Verified
+**Status:** Phase 5 In Progress — React Widget
 
 ## Project Reference
 
@@ -9,30 +9,30 @@
 
 **What This Is:** A public Shopify app with three components: (1) embedded admin dashboard for matrix configuration, (2) REST API for headless storefronts to fetch pricing, (3) drop-in React widget for easy integration. Merchants define breakpoint grids (width x height), assign them to products, and customers get real-time dimension-based pricing with checkout via Draft Orders.
 
-**Current Focus:** Phase 4 complete. All 3 plans executed: API auth + validators, REST endpoint, human verification with curl tests. Ready for Phase 5 (React Widget).
+**Current Focus:** Phase 5 in progress (React Widget). Plan 05-02 complete: widget package scaffold with Vite library mode, TypeScript types, and build tooling.
 
 ## Current Position
 
-**Phase:** 4 of 6 (Public REST API) — COMPLETE
-**Plan:** 3 of 3 — COMPLETE
-**Status:** Phase complete
-**Last activity:** 2026-02-06 - Completed 04-03-PLAN.md (human verification of API)
+**Phase:** 5 of 6 (React Widget) — IN PROGRESS
+**Plan:** 2 of 5 — COMPLETE
+**Status:** In progress
+**Last activity:** 2026-02-06 - Completed 05-02-PLAN.md (widget package scaffold)
 
 **Progress Bar:**
 ```
-[████████████████    ] 81% (17/21 requirements complete)
+[████████████████    ] 86% (18/21 requirements complete)
 
 Phase 1: Foundation & Authentication       [██████████] 3/3 ✓
 Phase 2: Admin Matrix Management           [██████████] 5/5 ✓
 Phase 3: Draft Orders Integration          [██████████] 3/3 ✓
 Phase 4: Public REST API                   [██████████] 3/3 ✓
-Phase 5: React Widget (npm Package)        [          ] 0/5
+Phase 5: React Widget (npm Package)        [████      ] 2/5
 Phase 6: Polish & App Store Preparation    [          ] 0/1
 ```
 
 ## Performance Metrics
 
-**Velocity:** 3.0 min/plan (10 plans completed)
+**Velocity:** 2.9 min/plan (18 plans completed)
 **Blockers:** 0
 **Active Research:** 0
 
@@ -53,6 +53,7 @@ Phase 6: Polish & App Store Preparation    [          ] 0/1
 | 04-public-rest-api | 01 | 2026-02-05 | 2min | ✓ Complete |
 | 04-public-rest-api | 02 | 2026-02-05 | 2min | ✓ Complete |
 | 04-public-rest-api | 03 | 2026-02-06 | 5min | ✓ Complete |
+| 05-react-widget | 02 | 2026-02-06 | 2min | ✓ Complete |
 
 ## Accumulated Context
 
@@ -100,6 +101,11 @@ Phase 6: Polish & App Store Preparation    [          ] 0/1
 - **[04-02]** Resource routes for REST endpoints: Export loader/action with no default export for REST API endpoints
 - **[04-02]** Generic 500 errors: Never expose internal details in error responses (console.error for debugging)
 - **[04-03]** Null query param handling: searchParams.get() returns null not undefined; filter before Zod parsing for .default() to work
+- **[05-02]** React as peer dependency: React and react-dom in both peerDependencies and devDependencies (consumer provides React, build uses local copy)
+- **[05-02]** 3 required props (apiUrl, apiKey, productId): Minimal API surface for v1, no hardcoded defaults
+- **[05-02]** Theme props as CSS custom properties: 6 optional props mapping to CSS vars (primaryColor, textColor, borderColor, borderRadius, fontSize, errorColor)
+- **[05-02]** Single callback pattern: onAddToCart fires when Draft Order created, payload includes draftOrderId, checkoutUrl, price, total, dimensions, quantity
+- **[05-02]** Internal types not exported: API response types defined but not exposed in public API
 
 **Pending:**
 - Pricing model (subscription vs one-time) - decided during Phase 6
@@ -139,27 +145,29 @@ From research:
 ## Session Continuity
 
 **Last session:** 2026-02-06
-**Stopped at:** Completed Phase 4 (Public REST API) — all 3 plans executed and verified
+**Stopped at:** Completed 05-02-PLAN.md (widget package scaffold)
 **Resume file:** None
 
 **What Just Happened:**
-- Executed all 3 plans in Phase 4 (Public REST API)
-- Plan 04-01: Created API auth middleware, Zod validators, rate limiting utility
-- Plan 04-02: Created product-matrix-lookup service and REST endpoint resource route
-- Plan 04-03: Human verified API with 7 curl tests — all passing
-- Fixed bug: null query params from searchParams.get() need filtering before Zod parsing
-- REST API fully verified end-to-end
+- Executed Plan 05-02: Widget package scaffold
+- Created packages/widget/ directory with Vite library mode configuration
+- Configured TypeScript for React JSX, peer dependencies for React 18
+- Defined complete public API types: PriceMatrixWidgetProps, ThemeProps, AddToCartEvent
+- Installed dependencies: vite, @vitejs/plugin-react, vite-plugin-dts, use-debounce, react-shadow
+- Widget package ready for component implementation (Plan 05-03 onwards)
 
 **What Comes Next:**
-- Plan Phase 5: React Widget (npm Package)
-- Research widget packaging patterns (Shadow DOM, npm publishing)
+- Continue Phase 5: React Widget implementation (Plans 03-05)
+- Plan 05-03: API hooks for price fetching and Draft Order creation
+- Plan 05-04: Main widget component with dimensions inputs, price display, add-to-cart
+- Plan 05-05: Shadow DOM integration and theming
 
 **Context for Next Agent:**
-- Phase 4 complete: REST API fully verified and ready for widget integration
-- API endpoint: GET /api/v1/products/:productId/price?width=X&height=Y&quantity=Z
-- Requires X-API-Key header, returns JSON with price/dimensions/quantity/total/matrix
-- CORS headers on all responses, rate limit headers on success responses
-- Database running on localhost:5400
+- Widget package scaffold complete at packages/widget/
+- TypeScript types define complete API: 3 required props (apiUrl, apiKey, productId), optional theme prop, onAddToCart callback
+- React externalized as peer dependency, not bundled
+- Build outputs ESM + UMD formats with TypeScript declarations
+- index.ts currently imports non-existent PriceMatrixWidget.tsx (will be created in Plan 04)
 
 ---
 *State tracked since: 2026-02-03*
