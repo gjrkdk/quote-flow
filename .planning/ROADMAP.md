@@ -160,6 +160,15 @@ Plans:
 **Requirements:**
 - MATRIX-07: Merchant can create a matrix by uploading a CSV file
 
+**Plans:** 5 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — CSV parser service (TDD) with validation and grid inference
+- [ ] 06-02-PLAN.md — Shopify Billing API setup and freemium utilities
+- [ ] 06-03-PLAN.md — ARIA grid keyboard navigation and responsive layout
+- [ ] 06-04-PLAN.md — CSV import UI with preview, confirm, and freemium gate
+- [ ] 06-05-PLAN.md — Focus management, security review, App Store listing, human verification
+
 **Success Criteria:**
 1. Merchant can upload a CSV file with headers (width, height, price) and create a complete matrix in one operation
 2. Dashboard displays mobile-responsive UI on tablet and phone screen sizes without horizontal scrolling
@@ -177,7 +186,7 @@ Plans:
 | **3. Draft Orders Integration** | Complete | 1 | 100% |
 | **4. Public REST API** | Complete | 4 | 100% |
 | **5. React Widget (npm Package)** | Complete | 5 | 100% |
-| **6. Polish & App Store Preparation** | Pending | 1 | 0% |
+| **6. Polish & App Store Preparation** | Planned | 1 | 0% |
 
 **Total Requirements:** 21/21 mapped
 **Overall Progress:** 95% (20/21 requirements complete)
@@ -195,7 +204,7 @@ Plans:
 - No orphaned requirements
 - No requirements duplicated across phases
 
-**Next Step:** Plan Phase 6 via `/gsd:discuss-phase 6`
+**Next Step:** Execute Phase 6 via `/gsd:execute-phase 6`
 
 ---
 *Last updated: 2026-02-06*
