@@ -33,11 +33,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Storefront Widget
 
-- [ ] **WIDGET-01**: React component renders width and height input fields with validation
-- [ ] **WIDGET-02**: Price updates in real-time as customer changes dimensions
-- [ ] **WIDGET-03**: Add-to-cart button creates a Draft Order with the calculated price
-- [ ] **WIDGET-04**: Widget uses Shadow DOM for CSS isolation from host page
-- [ ] **WIDGET-05**: Widget published as npm package with React as peer dependency
+- [x] **WIDGET-01**: React component renders width and height input fields with validation
+- [x] **WIDGET-02**: Price updates in real-time as customer changes dimensions
+- [x] **WIDGET-03**: Add-to-cart button creates a Draft Order with the calculated price
+- [x] **WIDGET-04**: Widget uses Shadow DOM for CSS isolation from host page
+- [x] **WIDGET-05**: Widget published as npm package with React as peer dependency
 
 ### Orders
 
@@ -112,11 +112,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | API-02 | Phase 4 | Complete |
 | API-03 | Phase 4 | Complete |
 | API-04 | Phase 4 | Complete |
-| WIDGET-01 | Phase 5 | Pending |
-| WIDGET-02 | Phase 5 | Pending |
-| WIDGET-03 | Phase 5 | Pending |
-| WIDGET-04 | Phase 5 | Pending |
-| WIDGET-05 | Phase 5 | Pending |
+| WIDGET-01 | Phase 5 | Complete |
+| WIDGET-02 | Phase 5 | Complete |
+| WIDGET-03 | Phase 5 | Complete |
+| WIDGET-04 | Phase 5 | Complete |
+| WIDGET-05 | Phase 5 | Complete |
 | ORDER-01 | Phase 3 | Complete |
 
 **Coverage:**
@@ -126,4 +126,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-03*
-*Last updated: 2026-02-06 after Phase 4 completion*
+*Last updated: 2026-02-06 after Phase 5 completion*

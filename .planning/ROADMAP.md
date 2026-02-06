@@ -137,10 +137,10 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Extend REST API: currency + dimension ranges in price response, Draft Order POST endpoint
-- [ ] 05-02-PLAN.md — Widget scaffold: Vite library mode, package.json, TypeScript types
-- [ ] 05-03-PLAN.md — Widget hooks (usePriceFetch, useDraftOrder) and internal components
-- [ ] 05-04-PLAN.md — Main widget assembly with Shadow DOM, build verification, human verification
+- [x] 05-01-PLAN.md — Extend REST API: currency + dimension ranges in price response, Draft Order POST endpoint
+- [x] 05-02-PLAN.md — Widget scaffold: Vite library mode, package.json, TypeScript types
+- [x] 05-03-PLAN.md — Widget hooks (usePriceFetch, useDraftOrder) and internal components
+- [x] 05-04-PLAN.md — Main widget assembly with Shadow DOM, build verification, human verification
 
 **Success Criteria:**
 1. Developer can install widget via `npm install @yourorg/shopify-price-matrix-widget` and render it in a React app
@@ -176,11 +176,11 @@ Plans:
 | **2. Admin Matrix Management** | Complete | 6 | 100% |
 | **3. Draft Orders Integration** | Complete | 1 | 100% |
 | **4. Public REST API** | Complete | 4 | 100% |
-| **5. React Widget (npm Package)** | Planned | 5 | 0% |
+| **5. React Widget (npm Package)** | Complete | 5 | 100% |
 | **6. Polish & App Store Preparation** | Pending | 1 | 0% |
 
 **Total Requirements:** 21/21 mapped
-**Overall Progress:** 81% (17/21 requirements complete)
+**Overall Progress:** 95% (20/21 requirements complete)
 
 ---
 
@@ -195,7 +195,7 @@ Plans:
 - No orphaned requirements
 - No requirements duplicated across phases
 
-**Next Step:** Execute Phase 5 via `/gsd:execute-phase 5`
+**Next Step:** Plan Phase 6 via `/gsd:discuss-phase 6`
 
 ---
 *Last updated: 2026-02-06*
