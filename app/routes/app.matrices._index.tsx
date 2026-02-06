@@ -3,6 +3,7 @@ import { json, redirect } from "@remix-run/node";
 import { useLoaderData, useNavigate, useFetcher } from "@remix-run/react";
 import {
   Page,
+  Box,
   Card,
   EmptyState,
   IndexTable,
@@ -316,22 +317,25 @@ export default function MatricesIndex() {
         onAction: () => navigate("/app/matrices/new"),
       }}
     >
-      <Card padding="0">
-        <IndexTable
-          resourceName={{ singular: "matrix", plural: "matrices" }}
-          itemCount={matrices.length}
-          headings={[
-            { title: "Name" },
-            { title: "Grid size" },
-            { title: "Products" },
-            { title: "Last edited" },
-            { title: "Actions" },
-          ]}
-          selectable={false}
-        >
-          {rowMarkup}
-        </IndexTable>
-      </Card>
+      <Box paddingInline={{ xs: "200", md: "400" }}>
+        <Card padding="0">
+          <IndexTable
+            resourceName={{ singular: "matrix", plural: "matrices" }}
+            itemCount={matrices.length}
+            headings={[
+              { title: "Name" },
+              { title: "Grid size" },
+              { title: "Products" },
+              { title: "Last edited" },
+              { title: "Actions" },
+            ]}
+            selectable={false}
+            condensed
+          >
+            {rowMarkup}
+          </IndexTable>
+        </Card>
+      </Box>
 
       <Modal
         open={deleteModalOpen}
