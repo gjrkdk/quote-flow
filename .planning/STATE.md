@@ -1,7 +1,7 @@
 # Project State: Shopify Price Matrix App
 
 **Last Updated:** 2026-02-06
-**Status:** Phase 6 In Progress — Freemium Billing Complete
+**Status:** Phase 6 In Progress — Accessibility & Responsive UI Complete
 
 ## Project Reference
 
@@ -9,30 +9,30 @@
 
 **What This Is:** A public Shopify app with three components: (1) embedded admin dashboard for matrix configuration, (2) REST API for headless storefronts to fetch pricing, (3) drop-in React widget for easy integration. Merchants define breakpoint grids (width x height), assign them to products, and customers get real-time dimension-based pricing with checkout via Draft Orders.
 
-**Current Focus:** Phase 6 in progress. Plans 06-01 (CSV parser) and 06-02 (Freemium billing) complete. Building polish features and preparing for App Store submission.
+**Current Focus:** Phase 6 in progress. Plans 06-01 (CSV parser), 06-02 (Freemium billing), and 06-03 (Accessibility & Responsive UI) complete. Ready for final App Store preparation.
 
 ## Current Position
 
 **Phase:** 6 of 6 (Polish & App Store Preparation)
-**Plan:** 2 of 4 complete
+**Plan:** 3 of 4 complete
 **Status:** In progress
-**Last activity:** 2026-02-06 - Completed 06-02-PLAN.md (Freemium Billing Setup)
+**Last activity:** 2026-02-06 - Completed 06-03-PLAN.md (Accessibility & Responsive UI)
 
 **Progress Bar:**
 ```
-[████████████████████] 95% (21/22 requirements complete)
+[████████████████████] 95% (22/23 requirements complete)
 
 Phase 1: Foundation & Authentication       [██████████] 3/3 ✓
 Phase 2: Admin Matrix Management           [██████████] 5/5 ✓
 Phase 3: Draft Orders Integration          [██████████] 3/3 ✓
 Phase 4: Public REST API                   [██████████] 3/3 ✓
 Phase 5: React Widget (npm Package)        [██████████] 4/4 ✓
-Phase 6: Polish & App Store Preparation    [█████░░░░░] 2/4
+Phase 6: Polish & App Store Preparation    [███████░░░] 3/4
 ```
 
 ## Performance Metrics
 
-**Velocity:** 7.4 min/plan (19 plans completed)
+**Velocity:** 7.0 min/plan (20 plans completed)
 **Blockers:** 0
 **Active Research:** 0
 
@@ -59,6 +59,7 @@ Phase 6: Polish & App Store Preparation    [█████░░░░░] 2/4
 | 05-react-widget | 04 | 2026-02-06 | 7min | ✓ Complete |
 | 06-polish-app-store-preparation | 01 | 2026-02-06 | 2min | ✓ Complete |
 | 06-polish-app-store-preparation | 02 | 2026-02-06 | 3min | ✓ Complete |
+| 06-polish-app-store-preparation | 03 | 2026-02-06 | 2min | ✓ Complete |
 
 ## Accumulated Context
 
@@ -133,6 +134,9 @@ Phase 6: Polish & App Store Preparation    [█████░░░░░] 2/4
 - **[06-02]** Free tier limit: 1 matrix with full functionality (no feature gating except CSV import)
 - **[06-02]** isTest flag from NODE_ENV: Development mode uses isTest=true to prevent charging test stores
 - **[06-02]** Billing check utilities pattern: checkBillingStatus, requirePaidPlan, canCreateMatrix for consistent billing enforcement across routes
+- **[06-03]** W3C ARIA grid pattern with roving tabindex: App Store requires WCAG 2.1 AA compliance. ARIA grid pattern provides full keyboard navigation for matrix editor.
+- **[06-03]** Polaris Grid for responsive dashboard layout: Built-in Shopify component with consistent breakpoints (xs/sm/md/lg/xl) for 2-column desktop, 1-column tablet/mobile.
+- **[06-03]** Preserve horizontal scroll on matrix grid: Existing decision from Phase 2. Large grids need horizontal scroll on small screens; ARIA pattern doesn't conflict with scrolling.
 
 **Pending:**
 - None
@@ -172,28 +176,28 @@ From research:
 ## Session Continuity
 
 **Last session:** 2026-02-06
-**Stopped at:** Completed 06-02-PLAN.md (Freemium Billing Setup)
+**Stopped at:** Completed 06-03-PLAN.md (Accessibility & Responsive UI)
 **Resume file:** None
 
 **What Just Happened:**
-- Executed Plan 06-02: Freemium Billing Setup
-- Configured Shopify Billing API in shopify.server.ts with UNLIMITED_PLAN ($12/mo, 14-day trial, Every30Days interval)
-- Created billing.server.ts utilities: checkBillingStatus, requirePaidPlan, canCreateMatrix
-- Free tier limited to 1 matrix, paid tier enables unlimited matrices + CSV import
-- All billing checks use isTest flag based on NODE_ENV for development safety
-- Task commits: 13ed0c3 (billing config), ad51cf0 (utilities)
+- Executed Plan 06-03: Accessibility & Responsive UI
+- Added WCAG 2.1 AA accessibility to MatrixGrid: ARIA grid role, roving tabindex, full keyboard navigation
+- Implemented keyboard handlers: Arrow keys, Tab/Shift+Tab with row wrapping, Enter/Escape, Home/End
+- Added screen reader labels (aria-label) to all price inputs
+- Made dashboard responsive with Polaris Grid (2-column desktop, 1-column tablet/mobile)
+- Made matrix list responsive with Box padding and condensed IndexTable
+- Preserved horizontal scroll on matrix grid for large grids on small screens
+- Task commits: f3eaace (ARIA grid navigation), fa01f7b (responsive layouts)
 
 **What Comes Next:**
-- Continue Phase 6: Polish & App Store Preparation (Plans 03-04)
-- Plan 03: Admin UI enhancements (billing status, upgrade CTAs, error improvements)
-- Plan 04: CSV import route integration with billing gating
+- Continue Phase 6: Polish & App Store Preparation (Plan 04)
+- Plan 04: Final App Store preparation (listing content, screenshots, submission docs)
 
 **Context for Next Agent:**
-- Billing utilities ready at app/services/billing.server.ts
-- canCreateMatrix() checks free tier limit and billing status
-- requirePaidPlan() returns upgrade details for UI messaging
-- CSV import (Plan 04) should call requirePaidPlan() to gate feature
-- Matrix creation route needs integration with canCreateMatrix()
+- MatrixGrid now WCAG 2.1 AA compliant with full keyboard navigation
+- Dashboard and matrix list are responsive across desktop/tablet/mobile
+- All accessibility requirements met for App Store submission
+- Phase 6 nearly complete (3/4 plans done)
 
 ---
 *State tracked since: 2026-02-03*
