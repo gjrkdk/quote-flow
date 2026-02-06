@@ -137,15 +137,16 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     const response = json(
       {
         price: unitPrice,
-        currency: "store-default",
+        currency: productMatrix.currency,
         dimensions: {
           width,
           height,
-          unit: store.unitPreference,
+          unit: productMatrix.unit,
         },
         quantity,
         total,
         matrix: productMatrix.matrixName,
+        dimensionRange: productMatrix.dimensionRange,
       },
       {
         headers: rateLimitHeaders,
