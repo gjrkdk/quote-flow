@@ -9,30 +9,30 @@
 
 **What This Is:** A public Shopify app with three components: (1) embedded admin dashboard for matrix configuration, (2) REST API for headless storefronts to fetch pricing, (3) drop-in React widget for easy integration. Merchants define breakpoint grids (width x height), assign them to products, and customers get real-time dimension-based pricing with checkout via Draft Orders.
 
-**Current Focus:** Phase 5 in progress (React Widget). Plan 05-02 complete: widget package scaffold with Vite library mode, TypeScript types, and build tooling.
+**Current Focus:** Phase 5 in progress (React Widget). Plan 05-01 complete: REST API extended with currency, dimension ranges, and Draft Order creation endpoint for widget integration.
 
 ## Current Position
 
 **Phase:** 5 of 6 (React Widget) — IN PROGRESS
-**Plan:** 2 of 5 — COMPLETE
+**Plan:** 1 of 5 — COMPLETE
 **Status:** In progress
-**Last activity:** 2026-02-06 - Completed 05-02-PLAN.md (widget package scaffold)
+**Last activity:** 2026-02-06 - Completed 05-01-PLAN.md (Widget API Extensions)
 
 **Progress Bar:**
 ```
-[████████████████    ] 86% (18/21 requirements complete)
+[█████████████████   ] 81% (17/21 requirements complete)
 
 Phase 1: Foundation & Authentication       [██████████] 3/3 ✓
 Phase 2: Admin Matrix Management           [██████████] 5/5 ✓
 Phase 3: Draft Orders Integration          [██████████] 3/3 ✓
 Phase 4: Public REST API                   [██████████] 3/3 ✓
-Phase 5: React Widget (npm Package)        [████      ] 2/5
+Phase 5: React Widget (npm Package)        [██        ] 1/5
 Phase 6: Polish & App Store Preparation    [          ] 0/1
 ```
 
 ## Performance Metrics
 
-**Velocity:** 2.9 min/plan (18 plans completed)
+**Velocity:** 11.1 min/plan (15 plans completed)
 **Blockers:** 0
 **Active Research:** 0
 
@@ -53,6 +53,7 @@ Phase 6: Polish & App Store Preparation    [          ] 0/1
 | 04-public-rest-api | 01 | 2026-02-05 | 2min | ✓ Complete |
 | 04-public-rest-api | 02 | 2026-02-05 | 2min | ✓ Complete |
 | 04-public-rest-api | 03 | 2026-02-06 | 5min | ✓ Complete |
+| 05-react-widget | 01 | 2026-02-06 | 63min | ✓ Complete |
 | 05-react-widget | 02 | 2026-02-06 | 2min | ✓ Complete |
 
 ## Accumulated Context
@@ -101,6 +102,10 @@ Phase 6: Polish & App Store Preparation    [          ] 0/1
 - **[04-02]** Resource routes for REST endpoints: Export loader/action with no default export for REST API endpoints
 - **[04-02]** Generic 500 errors: Never expose internal details in error responses (console.error for debugging)
 - **[04-03]** Null query param handling: searchParams.get() returns null not undefined; filter before Zod parsing for .default() to work
+- **[05-01]** Currency field in Store model: ISO 4217 currency code with USD default for price formatting
+- **[05-01]** Dimension ranges from breakpoints: Calculate min/max from first/last breakpoint values for client-side validation hints
+- **[05-01]** Draft Order REST endpoint authentication: Create Shopify admin GraphQL client from store's access token (REST pattern, not embedded app auth)
+- **[05-01]** Draft Order invoiceUrl as checkoutUrl: GraphQL mutation selects invoiceUrl for customer-facing checkout redirect
 - **[05-02]** React as peer dependency: React and react-dom in both peerDependencies and devDependencies (consumer provides React, build uses local copy)
 - **[05-02]** 3 required props (apiUrl, apiKey, productId): Minimal API surface for v1, no hardcoded defaults
 - **[05-02]** Theme props as CSS custom properties: 6 optional props mapping to CSS vars (primaryColor, textColor, borderColor, borderRadius, fontSize, errorColor)
@@ -145,22 +150,22 @@ From research:
 ## Session Continuity
 
 **Last session:** 2026-02-06
-**Stopped at:** Completed 05-02-PLAN.md (widget package scaffold)
+**Stopped at:** Completed 05-01-PLAN.md (Widget API Extensions)
 **Resume file:** None
 
 **What Just Happened:**
-- Executed Plan 05-02: Widget package scaffold
-- Created packages/widget/ directory with Vite library mode configuration
-- Configured TypeScript for React JSX, peer dependencies for React 18
-- Defined complete public API types: PriceMatrixWidgetProps, ThemeProps, AddToCartEvent
-- Installed dependencies: vite, @vitejs/plugin-react, vite-plugin-dts, use-debounce, react-shadow
-- Widget package ready for component implementation (Plan 05-03 onwards)
+- Executed Plan 05-01: Widget API Extensions
+- Added currency field to Store model with USD default (migration applied)
+- Extended ProductMatrixResult to include dimensionRange, unit, currency
+- Updated price API to return real ISO 4217 currency code and dimension ranges
+- Created POST /api/v1/draft-orders REST endpoint with API key auth
+- Draft Order endpoint creates admin client from store's access token, returns invoiceUrl as checkoutUrl
+- All 3 tasks committed atomically: 8d699d6, dc51cbb, ce325db
 
 **What Comes Next:**
-- Continue Phase 5: React Widget implementation (Plans 03-05)
-- Plan 05-03: API hooks for price fetching and Draft Order creation
-- Plan 05-04: Main widget component with dimensions inputs, price display, add-to-cart
-- Plan 05-05: Shadow DOM integration and theming
+- Continue Phase 5: React Widget (Plans 02-05)
+- Widget can now format prices with currency, validate dimensions, and create Draft Orders
+- API ready for widget integration
 
 **Context for Next Agent:**
 - Widget package scaffold complete at packages/widget/
