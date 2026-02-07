@@ -13,7 +13,7 @@
       "require": "./dist/price-matrix-widget.umd.js"
     }
   },
-  "files": ["dist"],
+  "files": ["dist", "README.md", "LICENSE"],
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
@@ -38,6 +38,19 @@
     "vite": "^5.0.0",
     "vite-plugin-dts": "^3.0.0"
   },
-  "keywords": ["shopify", "pricing", "widget", "react", "dimension-pricing"],
+  "keywords": ["shopify", "pricing", "widget", "react", "dimension-pricing", "draft-order"],
+  "author": "gjrkdk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gjrkdk/pricing-app.git",
+    "directory": "packages/widget"
+  },
+  "homepage": "https://github.com/gjrkdk/pricing-app/tree/main/packages/widget#readme",
+  "bugs": {
+    "url": "https://github.com/gjrkdk/pricing-app/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "license": "MIT"
 }
