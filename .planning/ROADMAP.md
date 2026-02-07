@@ -10,11 +10,12 @@ This milestone takes the shipped v1.0 MVP from development to production. The wi
 
 ## Phases
 
-### Phase 07: Publish Widget to npm
+### Phase 07: Publish Widget to npm ✓
 
 **Goal:** Publish `@pricing-matrix/widget` to the npm registry so developers can install it
+**Status:** Complete (2026-02-07)
 **Depends on:** None (widget code complete from v1.0)
-**Plans:** 2 plans
+**Plans:** 2 plans (2/2 complete)
 
 **Requirements:**
 - PUBLISH-01: Widget published to npm with README, types, peer dependencies
