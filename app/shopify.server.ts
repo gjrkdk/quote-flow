@@ -66,9 +66,6 @@ const shopify = shopifyApp({
       shopify.registerWebhooks({ session });
     },
   },
-  future: {
-    unstable_newEmbeddedAuthStrategy: true,
-  },
 });
 
 export default shopify;
