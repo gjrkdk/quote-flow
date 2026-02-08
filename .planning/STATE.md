@@ -33,7 +33,7 @@ Progress:
 ## Accumulated Context
 
 - Production: https://quote-flow-one.vercel.app (Vercel fra1 + Neon EU Central)
-- Widget: @gjrkdk/quote-flow@0.1.0 on npm
+- Widget: quote-flow@0.1.0 on npm
 - Billing gates disabled for testing (TODO markers in `billing.server.ts`)
 - In-memory rate limiting (Redis migration path documented for multi-instance)
 - `use_legacy_install_flow = true` required for proper offline session tokens

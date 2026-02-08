@@ -7,7 +7,7 @@
 **Phases completed:** 7-10 (8 plans total)
 
 **Key accomplishments:**
-- Published `@gjrkdk/quote-flow@0.1.0` to npm with TypeScript types, ESM/UMD builds, and MIT license
+- Published `quote-flow@0.1.0` to npm with TypeScript types, ESM/UMD builds, and MIT license
 - Deployed to Vercel (fra1) with Neon PostgreSQL (EU Central) at quote-flow-one.vercel.app
 - Registered as public Shopify app with working OAuth install flow
 - Fixed auth: legacy install flow for proper offline sessions, CORS preflight before authentication

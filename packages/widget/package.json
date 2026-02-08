@@ -1,5 +1,5 @@
 {
-  "name": "@gjrkdk/quote-flow",
+  "name": "quote-flow",
   "version": "0.1.0",
   "description": "Drop-in React widget for Shopify dimension-based pricing with live price updates and Draft Order checkout",
   "type": "module",

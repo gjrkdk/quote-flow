@@ -1,11 +1,11 @@
-# @gjrkdk/quote-flow
+# quote-flow
 
 Drop-in React widget for Shopify dimension-based pricing with live price updates and Draft Order checkout.
 
 ## Installation
 
 ```bash
-npm install @gjrkdk/quote-flow
+npm install quote-flow
 ```
 
 **Peer Dependencies:**
@@ -15,7 +15,7 @@ npm install @gjrkdk/quote-flow
 ## Usage
 
 ```tsx
-import { PriceMatrixWidget } from '@gjrkdk/quote-flow';
+import { PriceMatrixWidget } from 'quote-flow';
 
 function ProductPage() {
   return (

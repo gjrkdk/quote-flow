@@ -21,7 +21,7 @@ Merchants can offer custom-dimension pricing on their headless Shopify storefron
 - ✓ Orders are created as Shopify Draft Orders with the custom calculated price locked in — v1.0
 - ✓ Each store gets an API key for storefront-to-API authentication — v1.0
 - ✓ App is installable as a public Shopify app (App Store listed) — v1.0
-- ✓ Widget published to npm as @gjrkdk/quote-flow with README, types, peer dependencies — v1.1
+- ✓ Widget published to npm as quote-flow with README, types, peer dependencies — v1.1
 - ✓ Widget package version follows semver (0.1.0), build artifacts verified — v1.1
 - ✓ App deployed to Vercel with production PostgreSQL and stable URL — v1.1
 - ✓ Production environment variables configured — v1.1
@@ -63,7 +63,7 @@ Merchants can offer custom-dimension pricing on their headless Shopify storefron
 - **Pricing model:** Fixed breakpoint grid — merchants define discrete width steps, height steps, and a price at each (width, height) intersection. Customer dimensions snap up to the next higher step.
 - **Storefront integration:** Two paths — (1) REST API for custom integrations, (2) drop-in React widget with full UX
 - **Order flow:** Widget/API → calculate price → create Draft Order with locked custom price → convert to real order
-- **Current state:** v1.1 shipped. 7,173 LOC TypeScript. Production at quote-flow-one.vercel.app (Vercel fra1 + Neon EU Central). Widget on npm as @gjrkdk/quote-flow@0.1.0.
+- **Current state:** v1.1 shipped. 7,173 LOC TypeScript. Production at quote-flow-one.vercel.app (Vercel fra1 + Neon EU Central). Widget on npm as quote-flow@0.1.0.
 - **Tech stack:** Remix 2.5, React 18, Polaris 12, Prisma 5.8, PostgreSQL (Neon), Vite 5, TypeScript 5.3
 
 ## Constraints
