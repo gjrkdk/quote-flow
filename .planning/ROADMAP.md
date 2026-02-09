@@ -134,10 +134,12 @@ Plans:
   3. Merchant can control display order of option groups on products
   4. Merchant sees which products use each option group
   5. Admin UI prevents deletion of option groups assigned to products (or shows warning)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 12-01: TBD during phase planning
+- [ ] 12-01-PLAN.md — Option groups list page with IndexTable, delete modal, and navigation link
+- [ ] 12-02-PLAN.md — Create and edit forms with dynamic choices and Zod validation
+- [ ] 12-03-PLAN.md — Product assignment on edit page and full UI verification checkpoint
 
 #### Phase 13: REST API Extension
 **Goal**: API accepts option selections and returns modified prices with backward compatibility
