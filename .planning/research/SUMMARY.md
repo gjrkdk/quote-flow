@@ -1,357 +1,345 @@
 # Project Research Summary
 
-**Project:** Shopify Price Matrix App
-**Domain:** Shopify Embedded App + Public API + npm Widget
-**Researched:** 2026-02-03
+**Project:** QuoteFlow v1.2 - Option Groups & App Store Submission
+**Domain:** Shopify pricing app enhancement (dimension-based + option modifiers)
+**Researched:** 2026-02-09
 **Confidence:** HIGH
 
 ## Executive Summary
 
-This project is a Shopify embedded app enabling merchants to sell custom-dimension products (flooring, blinds, wallpaper, fabric, signage) using breakpoint-based pricing grids. The market is divided between formula-based calculators and fixed-grid matrices—this app takes the fixed-grid approach for simplicity and merchant usability.
+QuoteFlow v1.2 adds customizable option groups (dropdown price modifiers like "Glass Type: Tempered (+$25)") on top of the existing dimension-based price matrix system, and prepares for Shopify App Store submission. The existing v1.1 stack (Remix 2.5, Polaris 12, Prisma 5.8, PostgreSQL) requires NO framework upgrades. The architecture extends proven patterns: add new Prisma models for option groups/choices, modify existing price calculation to apply modifiers, and render native HTML `<select>` dropdowns in the widget.
 
-The architecture requires three distinct components: (1) embedded admin app for merchants to configure matrices, (2) public REST API for headless storefronts to fetch pricing, and (3) React widget as an npm package for drop-in integration. The recommended stack centers on Remix (via Shopify's official template), Prisma with PostgreSQL, and Vercel deployment with connection pooling. While Shopify now recommends React Router for new apps, Remix remains fully functional and provides cleaner separation for this dual-architecture project.
+The critical path is: (1) data model with proper cascading deletes to prevent orphaned records, (2) server-side price calculation using integer (cents) arithmetic to avoid floating-point errors, (3) admin CRUD for option groups, (4) API extensions with backwards compatibility, and (5) widget integration with optimistic UI to prevent price flicker. The most severe risk is floating-point rounding errors in price calculations - all currency must use integer (cents) arithmetic, not native JavaScript decimals.
 
-Critical risks stem from Shopify's evolving platform: third-party cookie blocking requires session tokens, connection exhaustion breaks serverless deployments, and GDPR webhooks are mandatory for app store approval. The winning strategy is to build the admin matrix management first (validates pricing logic), then layer on the API (enables headless), then ship the widget (maximizes reach). Fast setup and transparency beat feature complexity—merchants want pricing grids they can configure in 30 minutes, not formula builders that take days.
+App Store submission requires GraphQL Admin API migration (mandatory as of April 2025), GDPR webhooks (already scaffolded), and performance optimization to avoid Lighthouse score drops. The v1.1 foundation already meets 90% of App Store requirements. Research confidence is HIGH - validated against official Shopify docs, established e-commerce patterns, and competitor analysis of top product options apps.
 
 ## Key Findings
 
 ### Recommended Stack
 
-**Shopify has deprecated Polaris React** (Jan 2026) and now recommends React Router over Remix, but Remix remains viable for this project's dual architecture. The official Shopify template still uses Remix, and migration paths exist when needed.
+**No stack changes required.** The validated v1.1 production stack is sufficient for option groups and App Store submission. Keep Remix 2.5, React 18.2, Polaris 12, Prisma 5.8, PostgreSQL (Neon), Vite 5.0. The only additions are data model extensions and service layer logic.
 
-**Core technologies:**
-- **Remix** (via `@shopify/shopify-app-remix` 4.1.0): Embedded admin app with built-in OAuth, session management, and App Bridge
-- **Prisma ORM 7.2.0+**: Official Shopify session storage adapter, Rust-free version is 90% smaller and 3x faster
-- **PostgreSQL (Neon)**: Serverless Postgres with Vercel integration, pooled connections for serverless compatibility
-- **Polaris Web Components** (CDN): Framework-agnostic replacement for deprecated Polaris React
-- **Vite 7.x**: Modern build tool for React widget library mode with CSS injection plugin
-- **Vercel**: Native Remix support with serverless functions for both admin and API routes
-- **Node.js 20 LTS**: Required for Polaris v13+, Vercel default runtime
+**Critical addition: GraphQL Admin API.** As of April 1, 2025, new public apps MUST use GraphQL exclusively (no REST Admin API). Migrate Draft Order creation and product fetching to GraphQL mutations/queries using the existing `@shopify/shopify-app-remix@2.7.0` client. This is a mandatory App Store requirement, not optional.
 
-**Critical version notes:**
-- Do NOT use `@shopify/polaris` npm package (deprecated)
-- Use Shopify GraphQL Admin API exclusively (REST API deprecated Oct 2024)
-- Neon pooled connections require `-pooler` hostname suffix
-- Draft Orders API supports custom prices via `lineItem.priceOverride`
+**Core technologies (no changes):**
+- **Remix 2.5.0** - Admin app framework, API routes, sufficient for CRUD operations
+- **Prisma 5.8.0** - Schema extension for option groups, JSON field support for selected options
+- **PostgreSQL (Neon)** - Relational data model for option groups, JSON fields for order metadata
+- **React 18.2.0** - Widget already works, no need for React 19 (minimize risk)
+- **Native HTML `<select>`** - Accessibility best practice, mobile-optimized, zero JavaScript dependencies
+
+**What NOT to add:**
+- Headless UI / Radix UI - overkill for simple dropdowns, adds bundle size
+- Custom dropdown libraries - accessibility complexity, mobile incompatibility
+- React 19 upgrade - unnecessary breaking changes, no features needed
+- Prisma 6/7 upgrade - no new features needed, migration risk
 
 ### Expected Features
 
-**Must have (table stakes):**
-- Dimension input UI with real-time price display
-- Add-to-cart integration via Draft Orders API
-- Admin dashboard for matrix CRUD (Polaris embedded app)
-- Mobile-responsive widget (70%+ traffic)
-- Order metadata (dimensions in order details for fulfillment)
-- Product assignment (one matrix per product)
-- Multiple unit support (inches, feet, cm, meters)
+**Must have (table stakes - users expect these):**
+- Option group dropdowns (standard UI pattern, universally understood)
+- Price modifiers add to base matrix price (base + options = total)
+- Live price updates when selecting options (existing widget does this for dimensions)
+- Multiple option groups per product (glass type + edge finish + coating)
+- Fixed amount modifiers (+$10 for tempered glass)
+- Percentage modifiers (+20% for UV coating, calculated from base)
+- Clear modifier display in widget (+$15.00 shown next to option label)
+- Option metadata in Draft Orders (merchants see what customer selected)
 
-**Should have (competitive advantages):**
-- **Headless/API-first architecture** — REST endpoints for custom storefronts (primary differentiator)
-- **React widget (drop-in)** — Pre-built component for npm installation
-- Breakpoint rounding logic (handles in-between dimensions)
-- API key authentication per store (secure headless integration)
-- Bulk matrix import/export (CSV for fast setup)
-- Preset dimension options (common sizes as buttons)
+**Should have (competitive advantage):**
+- API-first option support (headless storefronts can use REST API)
+- Non-compounding percentages (all % calculated from base, not compound interest)
+- Empty state graceful (products without options still work - backwards compatible)
+- Option-aware price preview (widget shows base + modifiers breakdown)
+- Dropdown-only simplicity (no complex conditional logic in v1.2)
 
-**Defer to v2+:**
-- Visual size preview (shows product resized to dimensions)
-- Quantity breaks (discount for multiple units)
-- Formula/equation builder (anti-feature—too complex)
-- 3D dimensions (2D covers 90% of use cases)
-- Per-customer pricing (different domain, B2B complexity)
-- Inventory tracking by dimension (unsolvable problem)
-
-**Anti-features to explicitly avoid:**
-- Theme script injection (causes ghost code on uninstall)
-- Formula builders (merchants prefer simple grids)
-- Unlimited dimensions (2D sufficient)
-- Third-party cookies (breaks in Safari/Firefox)
+**Defer (v2+):**
+- Conditional option logic ("show option B only if A = X" - complexity explosion)
+- Option inventory tracking (infinite combinations break Shopify model)
+- Compounding percentages (confusing pricing, unpredictable for merchants)
+- Image swatches for options (asset management burden, loading performance)
+- Multi-select options (pricing ambiguity - additive? maximum?)
 
 ### Architecture Approach
 
-Three-tier architecture with unidirectional data flow: Admin → Database ← API ← Widget. The database is the single source of truth with multi-tenant isolation via shop domain filtering.
+The architecture extends the current dimension-based pricing system with minimal modifications. Option groups are store-scoped, reusable entities assigned to products via a join table. Price calculation remains centralized in the server: widget fetches base price + option modifiers via API, never calculates prices client-side (security risk).
 
 **Major components:**
 
-1. **Embedded Admin App** (Remix on Vercel)
-   - OAuth installation and session token authentication
-   - Matrix CRUD with Polaris UI
-   - Product assignment interface
-   - API key generation for public API
-   - Draft Order creation with custom pricing
+1. **Data Layer (NEW models)** - `OptionGroup` (store-scoped, reusable), `OptionChoice` (values with modifiers), `ProductOptionGroup` (many-to-many join with position/required metadata). Cascading deletes prevent orphaned records when products unassigned.
 
-2. **Database Layer** (Prisma + PostgreSQL)
-   - Multi-tenant data isolation (shop domain filter on all queries)
-   - Tables: Session (Shopify), Shop (metadata + API keys), Matrix (breakpoints + prices), ProductMatrix (assignments)
-   - Connection pooling required for serverless (Prisma Accelerate or Neon pooler)
+2. **Service Layer (MODIFIED)** - `price-calculator.server.ts` applies modifiers (percentages from base, then fixed amounts). `option-lookup.server.ts` validates selections against assigned groups. `draft-order.server.ts` includes option metadata in line item properties.
 
-3. **Public REST API** (Remix API routes)
-   - API key authentication (HMAC-signed requests)
-   - Versioned endpoints (`/api/v1/...`)
-   - Price lookup with breakpoint rounding
-   - Rate limiting per shop
-   - CORS configuration for storefront domains
+3. **API Layer (MODIFIED)** - `GET /api/v1/products/:id/price` accepts optional `optionSelections` array, returns base price + modifier breakdown. `POST /api/v1/draft-orders` validates options, applies modifiers, stores selections as customAttributes. `GET /api/v1/products/:id/options` (NEW) returns assigned groups and choices.
 
-4. **React Widget** (npm package via Vite)
-   - Shadow DOM for CSS isolation
-   - Dimension input and price display
-   - Fetches from REST API
-   - Published with React/ReactDOM as peerDependencies
+4. **Widget Layer (MODIFIED)** - `OptionGroupSelector.tsx` (NEW) renders native `<select>` dropdowns. `usePriceFetch` hook extended to include option selections, debounced API calls. Optimistic UI updates prevent price flicker.
+
+5. **Admin UI (NEW routes)** - `/app/options` (list groups), `/app/options/new` (create), `/app/options/:id/edit` (edit), `/app/products/:id/options` (assign to products). Polaris IndexTable and Form components.
 
 **Key patterns:**
-- Session tokens (not cookies) for embedded app auth
-- Prisma Client extensions for automatic shop filtering
-- API versioning for backward compatibility
-- Shadow DOM prevents host page CSS conflicts
-- Theme App Extensions (not script tags) for theme integration
+- **Option group reusability**: Create once, assign to multiple products (DRY principle)
+- **Non-compounding percentages**: All % calculated from base matrix price, not running total
+- **Option metadata in Draft Orders**: Store selections as line item properties for merchant visibility
+- **Native HTML `<select>`**: Accessibility by default, mobile-optimized, no custom dropdown complexity
 
 ### Critical Pitfalls
 
-1. **Third-party cookies for embedded sessions** — Use Shopify session tokens (JWT) with App Bridge, never cookies. Safari/Firefox block third-party cookies, breaking embedded apps. This is a mandatory app store check.
+Research identified 10 critical pitfalls. Top 5 that cause rewrites or App Store rejection:
 
-2. **Prisma connection exhaustion on Vercel** — Serverless functions open new DB connections per invocation. Without pooling, hits Postgres connection limit (100) and crashes. Use Prisma Accelerate, Neon pooler, or `connection_limit=1`.
+1. **Floating-point rounding errors in price calculations** - JavaScript's `0.1 + 0.2 !== 0.3` causes incorrect prices when modifiers stack. Prevention: Store all prices as integers (cents), perform calculations in cents, only convert to decimal for display. Never use `toFixed()` during calculations. This is the #1 risk in this domain.
 
-3. **Missing GDPR webhooks** — Public apps require `customers/data_request`, `customers/redact`, `shop/redact` webhooks. Automatic app store rejection if missing. Must delete data within 30 days.
+2. **Incorrect modifier order (percentage compounding)** - Wrong: $100 * 1.20 * 1.10 = $132. Correct: $100 + ($100 * 0.20) + ($100 * 0.10) = $130. Prevention: Calculate all percentages from base price, not running total. Document clearly in code and admin UI.
 
-4. **Theme code not removed on uninstall** — Legacy Script Tag API leaves ghost code breaking merchant sites. Use Theme App Extensions (auto-removed) or npm widget (no theme injection).
+3. **Orphaned option groups after product unassignment** - Database bloat, failed API lookups, GDPR compliance risk. Prevention: Schema with `ON DELETE CASCADE` in `ProductOptionGroup` join table. GDPR `shop/redact` webhook cascades to all related records.
 
-5. **Draft Orders API rate limits** — 5/minute on dev stores, 2/second on production. Implement exponential backoff with jitter, check `Retry-After` header, queue bulk operations.
+4. **REST API breaking changes without versioning** - Modifying `/price` endpoint signature breaks existing merchant integrations. Prevention: Make `optionSelections` optional, maintain backwards compatibility. Consider `/api/v2/price` for major changes.
 
-6. **REST API without HMAC verification** — API key alone insufficient; attackers can replay/modify requests. Use HMAC-SHA256 request signing with timestamp validation (reject if >5 minutes old).
+5. **App Store performance requirements** - Lighthouse score drops >10% or response times >500ms = automatic rejection. Prevention: Database indexes on foreign keys, Prisma query optimization (avoid N+1), Lighthouse testing before submission, widget bundle <50KB gzipped.
 
-7. **Draft Orders inventory confusion** — Draft Orders DO NOT reduce inventory until completed. Use `reserve_inventory_until` but only works with default location. Query InventoryLevel before creating draft order.
-
-8. **Webhook delivery assumptions** — Webhooks are best-effort, not guaranteed. Implement reconciliation jobs polling GraphQL every 15 minutes for `updatedAt > last_sync_time`. Make handlers idempotent.
-
-9. **Over-requesting access scopes** — Only request scopes needed NOW. For this app: `read_products`, `write_draft_orders`, `read_price_rules`. Excessive scopes lower install conversion and increase security risk.
-
-10. **npm package security vulnerabilities** — CVE-2025-55182 (React 19.0-19.2.0 RCE) requires React 19.2.1+. Run `npm audit --production` before publishing. Use `.npmignore` or `"files": ["dist"]` to exclude dev dependencies.
+**Additional critical pitfalls:**
+6. Cognitive overload from too many option dropdowns (recommend max 3-4 per product)
+7. Price flicker when options change (use optimistic UI, debounce API calls)
+8. Missing data migration for existing products (ensure backwards compatibility)
+9. Incomplete App Store listing metadata (screenshots 1600x900px, no pricing in images)
+10. Inadequate accessibility (keyboard navigation, ARIA labels, WCAG 2.1 AA contrast)
 
 ## Implications for Roadmap
 
-Based on research, suggested phase structure mirrors the dependency chain: foundation → admin data layer → API → widget → polish.
+Based on research, suggested phase structure prioritizes foundation (data model, service layer) before UI (admin, widget), and ensures App Store readiness throughout.
 
-### Phase 1: Foundation & Authentication
-**Rationale:** Everything depends on working auth and database. Multi-tenant isolation must be correct from day one—retrofitting is dangerous.
-
-**Delivers:**
-- Shopify OAuth installation flow
-- Session token authentication (App Bridge)
-- Prisma schema with multi-tenant models
-- Database connection pooling (Neon or Accelerate)
-- GDPR webhook handlers (mandatory for app store)
-
-**Critical pitfalls to avoid:**
-- Pitfall #2: Use session tokens, not cookies
-- Pitfall #4: Configure connection pooling NOW
-- Pitfall #3: Register GDPR webhooks early
-
-**Research flag:** Standard Shopify auth patterns, skip deep research. Follow official template.
-
----
-
-### Phase 2: Admin Matrix Management
-**Rationale:** Creates the data that API/widget will consume. Merchants need this before anything else is useful. Validates pricing logic in embedded context before exposing to headless.
+### Phase 1: Data Model & Price Calculation Foundation
+**Rationale:** Option groups require new database models, and price calculation logic is the highest-risk component (floating-point errors). This foundation must be solid before building UI or API endpoints.
 
 **Delivers:**
-- Embedded Polaris dashboard
-- Matrix CRUD UI (create/edit/delete pricing grids)
-- Product assignment interface
-- Breakpoint rounding logic
-- GraphQL queries to Shopify for product data
+- Prisma schema: `OptionGroup`, `OptionChoice`, `ProductOptionGroup` models
+- Database migration with cascading deletes
+- Service layer: `option-lookup.server.ts`, `price-calculator.server.ts` with integer (cents) arithmetic
+- Unit tests: currency edge cases, percentage modifiers, non-compounding validation
 
-**Uses:**
-- Polaris Web Components (loaded via CDN)
-- Prisma for matrix storage
-- Shop domain filtering for multi-tenant isolation
+**Addresses features:**
+- Option group data structure (table stakes)
+- Fixed/percentage modifiers (table stakes)
+- Reusable option groups across products (competitive advantage)
 
-**Critical pitfalls to avoid:**
-- Pitfall #1: Use Theme App Extensions, not script tags
-- Ensure all queries filter by `session.shop`
+**Avoids pitfalls:**
+- Floating-point rounding errors (integer arithmetic)
+- Incorrect modifier order (percentages from base)
+- Orphaned option groups (cascading deletes)
+- Missing data migration (backwards compatible schema)
 
-**Research flag:** Standard CRUD patterns with Polaris. No deep research needed.
+**Research needed:** NO (schema patterns well-documented in ARCHITECTURE.md)
 
----
-
-### Phase 3: Draft Orders Integration
-**Rationale:** Proves the pricing works end-to-end in Shopify's ecosystem before building public API. Merchants can test with embedded stores before headless customers use it.
-
-**Delivers:**
-- Draft Order creation with custom prices
-- Dimension metadata in orders (for fulfillment)
-- Inventory validation before order creation
-- Rate limit handling with exponential backoff
-
-**Addresses pitfalls:**
-- Pitfall #5: Implement retry logic for rate limits
-- Pitfall #7: Inventory doesn't reduce until completion
-- Pitfall #8: Handle async draft order creation (202 status)
-
-**Research flag:** NEEDS DEEP RESEARCH. Draft Orders have complex behavior (inventory, async, rate limits). Plan for `/gsd:research-phase` when detailing this phase.
-
----
-
-### Phase 4: Public REST API
-**Rationale:** Enables headless storefront integration—the primary differentiator. Widget is useless without API. Can test API independently before widget exists.
+### Phase 2: Admin UI for Option Groups
+**Rationale:** Merchants need to create and assign option groups before the widget/API can use them. Admin CRUD can be tested manually without widget complexity.
 
 **Delivers:**
-- API key generation per shop
-- API key authentication middleware
-- Price lookup endpoints (`GET /api/v1/products/:id/price`)
-- HMAC request signing
-- Rate limiting per shop
-- CORS configuration
-- API versioning (`/api/v1/...`)
+- `/app/options` (list), `/app/options/new` (create), `/app/options/:id/edit` (edit)
+- `/app/products/:id/options` (assign option groups to products)
+- Polaris IndexTable, Form components
+- Validation: unique option group names, minimum 1 choice per group
 
-**Uses:**
-- Remix API routes (same Vercel deployment)
-- Prisma queries with shop filter
-- Draft Orders API for order creation endpoint
+**Addresses features:**
+- Option group CRUD (table stakes)
+- Product assignment with position/required controls (table stakes)
+- Multiple option groups per product (table stakes)
 
-**Critical pitfalls to avoid:**
-- Pitfall #6: HMAC signatures required, not just API keys
-- Pitfall #10: Version API from start (`/api/v1/...`)
+**Avoids pitfalls:**
+- Cognitive overload guidance (warn if >4 option groups per product)
+- Admin UI shows option group usage (which products use this group)
 
-**Research flag:** NEEDS DEEP RESEARCH. API security patterns (HMAC, rate limiting) need detailed design. Plan for `/gsd:research-phase`.
+**Research needed:** NO (standard Polaris patterns, existing admin UI follows same structure)
 
----
-
-### Phase 5: React Widget (npm Package)
-**Rationale:** Completes headless offering. Merchants can drop into storefronts without custom development. Depends on working API.
+### Phase 3: REST API Extension with Backwards Compatibility
+**Rationale:** API must be ready before widget integration. Backwards compatibility ensures existing merchants (if any direct API users) aren't broken.
 
 **Delivers:**
-- React component with Shadow DOM
-- Dimension input UI
-- Price display with loading/error states
-- API client for price fetching
-- Vite library build configuration
-- npm package publishing
+- `GET /api/v1/products/:id/price` accepts optional `optionSelections` array
+- `POST /api/v1/draft-orders` accepts optional `optionSelections`, validates against assigned groups
+- `GET /api/v1/products/:id/options` (NEW endpoint)
+- Response includes base price + modifier breakdown
+- Validation: option IDs exist, belong to product, required groups selected
 
-**Uses:**
-- Vite 7.x with library mode
-- `vite-plugin-lib-inject-css` for CSS handling
-- `vite-plugin-externalize-deps` to prevent bundling React
-- Shadow DOM for CSS isolation
+**Addresses features:**
+- API-first option support (competitive advantage)
+- Price modifier calculation (table stakes)
+- Option validation in API (table stakes)
 
-**Critical pitfalls to avoid:**
-- Pitfall #14: Run `npm audit --production`, fix React CVE
-- Don't bundle React/ReactDOM (use peerDependencies)
+**Avoids pitfalls:**
+- REST API breaking changes (optional parameter, graceful degradation)
+- Missing server-side validation (always recalculate price, don't trust client)
+- Performance issues (database indexes, Prisma `include` optimization)
 
-**Research flag:** Standard React widget patterns. Vite library mode is well-documented. Skip deep research.
+**Research needed:** LIGHT (API versioning strategy for Remix routes - may need pattern research if complex)
 
----
-
-### Phase 6: Polish & App Store Preparation
-**Rationale:** Final touches to meet app store requirements and merchant expectations.
+### Phase 4: Widget Integration with Optimistic UI
+**Rationale:** Widget is the customer-facing component, requires API from Phase 3 and option groups from Phase 2. Most complex UX component with accessibility requirements.
 
 **Delivers:**
-- Bulk matrix import/export (CSV)
-- Preset dimension buttons
-- Mobile optimization
-- Accessibility compliance (WCAG 2.1 AA)
-- Production OAuth flow testing
-- Vercel environment variable configuration
-- Documentation and README
+- `OptionGroupSelector.tsx` (native HTML `<select>`)
+- `useOptionGroups.ts` hook (fetch assigned groups)
+- `usePriceFetch` modification (include option selections, debounce)
+- Optimistic UI updates (instant feedback, API verification in background)
+- Mobile-optimized dropdowns (48x48px tap targets)
+- Accessibility: keyboard navigation, ARIA labels, WCAG 2.1 AA contrast
 
-**Addresses pitfalls:**
-- Pitfall #13: Test OAuth on production URL
-- Pitfall #15: Polaris accessibility audit
-- Pitfall #19: Configure Vercel env vars
+**Addresses features:**
+- Option group dropdowns (table stakes)
+- Live price updates (table stakes)
+- Clear modifier display (table stakes)
+- Empty state graceful (backwards compatibility)
 
-**Research flag:** No deep research. Checklist-driven phase.
+**Avoids pitfalls:**
+- Price flicker (optimistic UI, debounce, show loading alongside price not instead)
+- Cognitive overload (visual grouping, smart defaults, progressive disclosure)
+- Accessibility violations (native `<select>`, keyboard testing, screen reader testing)
+- Performance issues (bundle size <50KB, lazy loading, React.memo)
 
----
+**Research needed:** NO (native HTML `<select>` patterns well-documented in STACK.md)
+
+### Phase 5: GraphQL Migration & GDPR Webhooks
+**Rationale:** Mandatory for App Store submission. REST Admin API deprecated, GraphQL required as of April 2025. GDPR webhooks must actually delete data, not just acknowledge.
+
+**Delivers:**
+- Draft Order creation migrated to GraphQL `draftOrderCreate` mutation
+- Product fetching migrated to GraphQL `products` query
+- GDPR webhooks: `customers/data_request`, `customers/redact`, `shop/redact`
+- Webhook testing: Shopify CLI triggers, verify deletion in database
+- Schema cascade deletes: `shop/redact` removes all option groups for store
+
+**Addresses features:**
+- App Store compliance (mandatory)
+- GDPR compliance (mandatory)
+
+**Avoids pitfalls:**
+- App Store rejection for REST API usage
+- GDPR complaints for incomplete data deletion
+- Webhook timeout (respond <200ms, queue long-running deletions)
+
+**Research needed:** NO (official Shopify docs in STACK.md, patterns well-established)
+
+### Phase 6: Performance Audit & App Store Submission
+**Rationale:** Final pre-submission checks ensure no performance regressions, complete listing metadata, and pass accessibility audits.
+
+**Delivers:**
+- Lighthouse testing on test store (no >10% score drop)
+- Load testing (100 concurrent users, slow network conditions)
+- Database indexes verified (storeId, productId, optionGroupId)
+- App Store listing: 3 screenshots (1600x900px), description, privacy policy URL
+- Accessibility audit: keyboard-only testing, screen reader testing, axe DevTools
+- Test credentials for reviewers (demo store with matrices + option groups)
+
+**Addresses features:**
+- App Store compliance (mandatory)
+- Performance standards (mandatory)
+
+**Avoids pitfalls:**
+- App Store rejection for performance issues
+- App Store rejection for incomplete listing metadata
+- Accessibility violations (keyboard navigation, ARIA labels, color contrast)
+
+**Research needed:** NO (Shopify App Store requirements documented in PITFALLS.md)
 
 ### Phase Ordering Rationale
 
-**Why this sequence:**
-1. **Foundation first** — Auth and database are load-bearing; wrong decisions are expensive to fix
-2. **Admin before API** — Validates pricing logic in controlled embedded environment before exposing to public
-3. **Draft Orders after CRUD** — Need matrix data to test pricing; proves integration with Shopify ecosystem
-4. **API after Draft Orders** — Reuses draft order logic, but adds auth layer and headless concerns
-5. **Widget last** — Completely dependent on API; can be developed independently once API stable
-6. **Polish as final phase** — Nice-to-haves that don't block core functionality
+**Foundation-first approach:**
+- Data model before UI (can't build admin UI without database schema)
+- Admin UI before widget (merchants create option groups before customers use them)
+- API before widget (widget depends on API endpoints)
+- Performance audit last (need complete feature set to measure)
 
-**Dependency chains from architecture:**
-- Matrix CRUD → Breakpoint Rounding → Price Display → Draft Orders
-- API Auth → REST Endpoints → Headless Support
-- REST API → React Widget → Theme Compatibility
+**Risk mitigation through dependencies:**
+- Price calculation in Phase 1 (highest risk, must be solid foundation)
+- Backwards compatibility in Phase 3 (avoid breaking existing integrations)
+- Optimistic UI in Phase 4 (UX polish after core functionality works)
+- App Store compliance in Phase 5-6 (complete features before submission)
 
-**Pitfall mitigation:**
-- High-risk decisions (connection pooling, session tokens) in Phase 1
-- GDPR compliance early (Phase 1) avoids app store rejection
-- Draft Orders complexity isolated in Phase 3 (can research deeply)
-- API security patterns (HMAC) built into Phase 4 from start
+**Parallel work opportunities:**
+- Phase 2 (Admin UI) and Phase 3 (API) can overlap once data model is complete
+- Phase 5 (GraphQL migration) can start while Phase 4 (widget) is in progress
+- Documentation and listing metadata (Phase 6) can be drafted throughout
 
 ### Research Flags
 
-**Phases needing deeper research:**
-- **Phase 3 (Draft Orders):** Complex behavior around inventory, async processing, rate limits. Sparse documentation on edge cases. Recommend `/gsd:research-phase draft-orders` when planning.
-- **Phase 4 (REST API):** Security patterns (HMAC signing, rate limiting) need detailed design. API versioning strategy. Recommend `/gsd:research-phase api-security`.
+**Phases needing deeper research during planning:**
+NONE. All phases have well-documented patterns in research files. Standard implementation.
 
-**Phases with standard patterns (skip research):**
-- **Phase 1 (Foundation):** Official Shopify template handles auth. Prisma docs cover connection pooling.
-- **Phase 2 (Admin CRUD):** Standard Remix + Polaris patterns, well-documented.
-- **Phase 5 (Widget):** Vite library mode guides available, Shadow DOM patterns established.
-- **Phase 6 (Polish):** Checklist execution, no novel patterns.
+**Phases with established patterns (skip research-phase):**
+- **Phase 1:** Prisma schema patterns, price calculation logic - detailed in ARCHITECTURE.md
+- **Phase 2:** Polaris admin UI components - existing app already uses this pattern
+- **Phase 3:** REST API extensions - existing API structure, add optional parameter
+- **Phase 4:** Native HTML `<select>` - accessibility best practice, STACK.md has implementation
+- **Phase 5:** GraphQL Admin API - official Shopify docs, STACK.md has migration guide
+- **Phase 6:** App Store submission - PITFALLS.md has complete checklist
+
+**If complexity emerges during implementation:**
+- **Phase 3 API versioning:** If backwards compatibility becomes complex, may need Remix API versioning pattern research (currently assumes simple optional parameter)
+- **Phase 4 optimistic UI:** If state management becomes unwieldy with multiple option groups, may need Zustand/Jotai research (currently assumes React useState sufficient)
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | **HIGH** | All technologies have official Shopify adapters or verified community usage. Remix template is production-ready despite React Router recommendation. |
-| Features | **HIGH** | Validated across 10+ competitor apps and merchant reviews. Table stakes are consistent; differentiators (headless/API) align with Shopify 2026 trends. |
-| Architecture | **HIGH** | Three-tier pattern is standard for Shopify apps with public APIs. Multi-tenant isolation and session tokens are well-documented. Shadow DOM for widgets has multiple production implementations. |
-| Pitfalls | **HIGH** | All critical pitfalls verified with official Shopify docs. Draft Orders behavior confirmed in API reference. Security vulnerabilities (React CVE) from official advisories. |
+| Stack | **HIGH** | Existing v1.1 stack validated in production, no upgrades needed. GraphQL migration documented in official Shopify docs. Native `<select>` is web standard. |
+| Features | **HIGH** | Table stakes verified across 10+ product options apps (Easify, Sellio, SC Product Options). Differentiators (API-first, Shadow DOM) already proven in v1.1. |
+| Architecture | **HIGH** | Extends existing proven patterns (data model + service layer + API + widget). Schema design follows standard many-to-many with metadata pattern. No novel patterns required. |
+| Pitfalls | **HIGH** | Floating-point errors well-documented in financial applications research. App Store requirements from official Shopify docs. Accessibility patterns from WCAG 2.1 AA standards. |
 
-**Overall confidence:** **HIGH**
-
-All core decisions backed by official documentation or authoritative sources. The main uncertainty is Remix vs React Router (Shopify's recommendation shifted in late 2025), but Remix template remains fully supported with clear migration path.
+**Overall confidence:** HIGH
 
 ### Gaps to Address
 
-**During Phase 3 (Draft Orders) planning:**
-- **Draft Orders vs Cart Transform API:** Research which provides better headless experience. Draft Orders proven but may be legacy path; Cart Transform is newer. Current recommendation is Draft Orders (documented, stable), but validate when planning Phase 3.
-- **Multi-location inventory:** Draft Orders only use default location for `reserve_inventory_until`. How to handle merchants with multiple fulfillment locations?
+**Minor gaps (can be resolved during implementation):**
 
-**During Phase 4 (API) planning:**
-- **Rate limiting implementation:** Redis-backed rate limiting scales better than in-memory but adds infrastructure. At what scale to switch? Current recommendation: start with in-memory Map, plan Redis migration at 1K+ shops.
-- **API key rotation:** How often to rotate? What's the migration path for active integrations?
+1. **Option group display limit recommendation** - Research suggests max 3-4 option groups per product to avoid cognitive overload, but optimal number needs user testing validation. Mitigation: Start with soft warning at 4 groups, gather analytics post-launch.
 
-**During Phase 5 (Widget) planning:**
-- **Widget adoption hypothesis:** Will headless merchants actually use pre-built widget, or prefer building custom? Consider analytics to track npm package usage vs direct API calls.
+2. **Percentage modifier display format** - Should widget show "+20%" or "+$20.00 (20%)" or both? Research doesn't provide clear preference. Mitigation: Test both formats with merchants in Phase 2 admin UI, use clearer option for widget in Phase 4.
 
-**Before app submission:**
-- **Pricing model:** One-time purchase vs subscription vs usage-based? Not addressed in research—needs validation with target merchants. Recommend pricing research during Phase 6.
+3. **Option metadata format in Draft Orders** - Shopify supports both `properties` (legacy) and `customAttributes` (newer). Research recommends `customAttributes` but both are valid. Mitigation: Use `customAttributes` as per GraphQL `draftOrderCreate` mutation schema.
+
+4. **Rate limiting migration to Redis** - Current in-memory rate limiting doesn't work across Vercel instances (acknowledged technical debt). Not critical for v1.2 launch but should be roadmapped for v1.3. Mitigation: Document as known limitation, monitor API abuse post-launch.
+
+**No blocking gaps.** All areas have sufficient research to proceed with roadmap planning and implementation.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [Shopify Remix Template](https://github.com/Shopify/shopify-app-template-remix) — Official app template with OAuth, session storage
-- [Shopify API Docs: Session Tokens](https://shopify.dev/docs/apps/build/authentication-authorization/session-tokens) — Embedded app auth pattern
-- [Shopify API Docs: Privacy Compliance](https://shopify.dev/docs/apps/build/compliance/privacy-law-compliance) — GDPR webhook requirements
-- [Shopify API Docs: Rate Limits](https://shopify.dev/docs/api/usage/limits) — Draft Orders rate limits
-- [Shopify API Docs: DraftOrder](https://shopify.dev/docs/api/admin-rest/latest/resources/draftorder) — Inventory behavior, async processing
-- [Prisma Deploy to Vercel](https://www.prisma.io/docs/orm/prisma-client/deployment/serverless/deploy-to-vercel) — Connection pooling strategies
-- [React Security Advisory CVE-2025-55182](https://react.dev/blog/2025/12/03/critical-security-vulnerability-in-react-server-components) — Widget security
-- [Polaris Web Components](https://shopify.dev/docs/api/app-home/using-polaris-components) — UI component migration
+
+**Shopify Official Documentation:**
+- [App Store requirements](https://shopify.dev/docs/apps/launch/shopify-app-store/app-store-requirements) - Technical and listing requirements
+- [GraphQL mandatory (April 2025)](https://shopify.dev/changelog/starting-april-2025-new-public-apps-submitted-to-shopify-app-store-must-use-graphql) - REST deprecation
+- [Privacy law compliance](https://shopify.dev/docs/apps/build/compliance/privacy-law-compliance) - GDPR webhook requirements
+- [Draft Order GraphQL mutation](https://shopify.dev/docs/api/admin-graphql/latest/mutations/draftOrderCreate) - API reference
+- [Performance optimization](https://shopify.dev/docs/apps/build/performance) - App Store performance standards
+- [Accessibility best practices](https://shopify.dev/docs/apps/build/accessibility) - WCAG requirements
+
+**Web Standards:**
+- [Prisma JSON Fields Documentation](https://www.prisma.io/docs/orm/prisma-client/special-fields-and-types/working-with-json-fields) - Data model patterns
+- [Select Dropdown Accessibility](https://www.atomica11y.com/accessible-design/select/) - WCAG best practices for dropdowns
+- [WCAG 2.1 AA standards](https://www.w3.org/WAI/WCAG21/quickref/) - Accessibility requirements
 
 ### Secondary (MEDIUM confidence)
-- [Gadget: Pass Shopify App Review](https://gadget.dev/blog/how-to-pass-the-shopify-app-store-review-the-first-time-part-1-the-technical-bit) — Common rejection reasons
-- [Hookdeck: Shopify Webhooks Guide](https://hookdeck.com/webhooks/platforms/shopify-webhooks-best-practices-revised-and-extended) — Webhook reliability patterns
-- [Kirill Platonov: Rate Limit Strategies](https://kirillplatonov.com/posts/shopify-api-rate-limits/) — Retry logic implementation
-- [Vercel Connection Pooling](https://vercel.com/kb/guide/connection-pooling-with-functions) — Serverless database patterns
-- [Shopify App Store Requirements](https://shopify.dev/docs/apps/launch/shopify-app-store/app-store-requirements) — Performance, UX requirements
-- Community discussions on Draft Orders limitations, Remix vs React Router
 
-### Tertiary (LOW confidence, needs validation)
-- Matrix size limits (100x100 recommendation based on competitor analysis, not official limit)
-- Headless adoption rates (20-30% estimate from general Shopify trends, not app-specific data)
-- Pricing model best practices (inferred from competitor apps, needs merchant validation)
+**Competitor Analysis:**
+- [Top Shopify Product Options Apps Compared (2026)](https://easy-flow.app/shopify-product-options-apps-compared/) - Feature comparison of Easify, Sellio, SC Product Options
+- [Best Product Options Apps for Shopify (2026)](https://easifyapps.com/blog/best-shopify-product-options-apps/) - Market leaders analysis
+
+**Financial Calculations:**
+- [JavaScript Rounding Errors (Financial Applications)](https://www.robinwieruch.de/javascript-rounding-errors/) - Floating-point pitfalls
+- [Handle Money in JavaScript: Financial Precision](https://dev.to/benjamin_renoux/financial-precision-in-javascript-handle-money-without-losing-a-cent-1chc) - Integer arithmetic patterns
+- [Currency Calculations in JavaScript](https://www.honeybadger.io/blog/currency-money-calculations-in-javascript/) - Currency.js vs Dinero.js comparison
+
+**Database & API Patterns:**
+- [Database Migrations: Safe, Downtime-Free Strategies](https://vadimkravcenko.com/shorts/database-migrations/) - Schema migration best practices
+- [API Versioning Best Practices for Backward Compatibility](https://endgrate.com/blog/api-versioning-best-practices-for-backward-compatibility) - API versioning patterns
+
+### Tertiary (LOW confidence - informational only)
+
+**UX Patterns:**
+- [Dropdown UI Design: Anatomy, UX, and Use Cases](https://www.setproduct.com/blog/dropdown-ui-design) - Dropdown best practices
+- [Understanding optimistic UI and React's useOptimistic Hook](https://blog.logrocket.com/understanding-optimistic-ui-react-useoptimistic-hook/) - Optimistic UI patterns
 
 ---
 
-**Research completed:** 2026-02-03
-**Ready for roadmap:** YES
-
-**Next step:** Roadmapper agent can use this summary to structure detailed phase requirements. High-risk phases (Draft Orders, API Security) flagged for deeper research during planning.
+*Research completed: 2026-02-09*
+*Ready for roadmap: YES*
+*Next step: Requirements definition (roadmapper agent)*

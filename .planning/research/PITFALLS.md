@@ -1,7 +1,8 @@
-# Domain Pitfalls
+# Pitfalls Research: Adding Option Groups & App Store Submission
 
-**Domain:** Public Shopify App (Draft Orders + REST API + Vercel Deployment)
-**Researched:** 2026-02-03
+**Domain:** Shopify App Enhancement (Option Groups with Price Modifiers + App Store Submission)
+**Project:** QuoteFlow - Existing Matrix Pricing App
+**Researched:** 2026-02-09
 **Confidence:** HIGH (verified with official Shopify docs and multiple sources)
 
 ---
@@ -10,814 +11,608 @@
 
 Mistakes that cause rewrites, app store rejection, or major security/compliance issues.
 
-### Pitfall 1: Theme Code Not Removed on Uninstall
+### Pitfall 1: Floating Point Rounding Errors in Price Calculations
 
-**What goes wrong:** Apps that inject code into merchant themes (Liquid snippets, script tags) leave "ghost code" after uninstallation. Scripts try loading when files no longer exist, slowing down sites and breaking functionality.
+**What goes wrong:** Price calculations using JavaScript's native floating-point arithmetic produce incorrect results. For example, `0.1 + 0.2 !== 0.3`, and `2.05 * 100` returns `204.99999999999997` instead of `205`. When option modifiers stack on matrix prices, these errors compound, causing customers to be charged incorrect amounts (typically a few cents off).
 
-**Why it happens:** Developers use legacy Script Tag API or direct theme modifications instead of Theme App Extensions. Uninstall webhooks aren't sufficient to clean theme files.
+**Why it happens:** All numbers in JavaScript use IEEE 754 double-precision floating-point format, which cannot precisely represent decimal values in binary. Floating-point errors occur in 17-56% of mathematical operations. Developers assume native number operations are safe for currency.
+
+**Consequences:**
+- Incorrect prices displayed to customers
+- Draft Orders created with wrong totals
+- Merchant revenue loss or overcharging
+- Customer complaints and chargebacks
+- Loss of merchant trust
+- Inconsistent pricing between widget display and actual checkout
+
+**Prevention:**
+- Store all prices as integers (cents) in the database
+- Multiply by 100 before storing: `Math.round(price * 100)`
+- Perform all calculations in cents using integer arithmetic
+- Only convert to decimal display format at the final UI rendering step
+- Use libraries like `currency.js`, `dinero.js`, or `big.js` for complex calculations
+- For Shopify integration: prices in cents align with Shopify's API expectations (many endpoints accept cents)
+- Never use `toFixed()` during intermediate calculations (only for final display)
+
+**Detection:**
+- Unit tests with currency edge cases: `0.1 + 0.2`, `2.05 * 100`, percentage calculations
+- Test calculations with 3-4 option modifiers stacked together
+- Compare final price to manual calculation spreadsheet
+- Monitor Draft Order prices vs. calculated widget prices
+- User reports: "My price is off by a few cents"
+
+**Phase to address:** Option Groups Data Model & Price Calculation (first phase of v1.2)
+
+**Sources:**
+- [JavaScript Rounding Errors (in Financial Applications)](https://www.robinwieruch.de/javascript-rounding-errors/)
+- [Handle Money in JavaScript: Financial Precision Without Losing a Cent](https://dev.to/benjamin_renoux/financial-precision-in-javascript-handle-money-without-losing-a-cent-1chc)
+- [Currency Calculations in JavaScript](https://www.honeybadger.io/blog/currency-money-calculations-in-javascript/)
+
+---
+
+### Pitfall 2: Incorrect Modifier Order of Operations (Percentage Compounding)
+
+**What goes wrong:** Option modifiers apply in the wrong order, causing percentage modifiers to compound instead of calculating from the base matrix price. For example:
+- Base matrix price: $100
+- Option 1: +20% (should be $20)
+- Option 2: +10% (should be $10)
+- **Wrong:** $100 * 1.20 = $120, then $120 * 1.10 = $132 (compounded)
+- **Correct:** ($100 * 0.20) + ($100 * 0.10) + $100 = $130 (both from base)
+
+**Why it happens:** Developers naturally chain percentage calculations without distinguishing between "compound interest" vs "all from base" semantics. Project requirements state "percentages calculated from base (not compounded)" but implementation uses sequential multiplication.
+
+**Consequences:**
+- Customers overcharged on multi-option configurations
+- Price discrepancies between widget estimates and final checkout
+- Merchant confusion about how pricing works
+- Customer complaints: "Your calculator is wrong"
+- Refund requests after Draft Order completion
+- Loss of merchant credibility
+
+**Prevention:**
+- Document modifier order in code comments: "All percentages calculate from base matrix price"
+- Implement calculation as: `basePrice + sum(fixedModifiers) + basePrice * sum(percentageModifiers)`
+- Separate fixed-amount and percentage modifiers into two accumulation steps
+- Unit tests with multiple percentage modifiers comparing to spreadsheet calculations
+- Show calculation breakdown in admin UI: "Base: $100, +20% Glass ($20), +10% Coating ($10) = $130"
+- Admin preview feature: merchants can test configurations before publishing
+
+**Detection:**
+- Unit test: base $100, two 10% options should equal $120 not $121
+- Manual testing: configure 3+ percentage options and verify against calculator
+- Merchant feedback: "My prices don't match my spreadsheet"
+- Widget price display vs. actual Draft Order price mismatch
+
+**Phase to address:** Option Groups Price Calculation Logic (first phase of v1.2)
+
+**Sources:**
+- [Pricing settings - Commerce Dynamics 365](https://learn.microsoft.com/en-us/dynamics365/commerce/price-settings)
+- [Pricing & Custom Formula - Acowebs](https://acowebs.com/guideline/plugin-docs-faqs/wcpa/pricing-custom-formula/)
+
+---
+
+### Pitfall 3: Orphaned Option Groups After Product Unassignment
+
+**What goes wrong:** When a product is unassigned from a matrix or deleted from Shopify, option groups remain assigned to that product in the database. These orphaned records cause:
+- Failed API lookups (product exists but references deleted option groups)
+- Admin UI showing option groups with no valid products
+- Database bloat from unreachable records
+- Confusing merchant experience: "Why can't I delete this option group?"
+
+**Why it happens:** Schema lacks proper cascading deletes or referential integrity checks. Foreign key constraints don't cascade when products are unassigned. Developers focus on create/update flows but neglect cleanup on delete.
+
+**Consequences:**
+- Database integrity violations
+- REST API errors for valid-looking product IDs
+- Merchant confusion when editing option groups
+- Cannot delete option groups due to "phantom" references
+- Data leakage: merchant thinks data is deleted but it persists
+- GDPR compliance risk: data not fully redacted on shop deletion
+
+**Prevention:**
+- Schema design: Add `ProductOptionGroup` join table with `ON DELETE CASCADE` to `ProductMatrix`
+- When product unassigned from matrix: delete all `ProductOptionGroup` records
+- When option group deleted: verify no product assignments or cascade delete
+- Implement database foreign key constraints, not just Prisma schema annotations
+- GDPR `shop/redact` webhook: cascade delete all related option groups
+- Admin UI: warn merchants before deleting products with option groups
+- Background job: periodic cleanup of orphaned records (defensive)
+
+**Detection:**
+- Database integrity checks: `SELECT * FROM product_option_groups WHERE product_id NOT IN (SELECT product_id FROM product_matrices)`
+- Admin UI test: assign options → unassign product → check option groups table
+- API test: request price for recently unassigned product
+- Monitor logs for "option group not found" errors on valid product IDs
+
+**Phase to address:** Option Groups Data Model (before any product assignment features)
+
+**Sources:**
+- [Data migration challenges: Common issues and fixes](https://www.rudderstack.com/blog/data-migration-challenges/)
+- [Schema migrations: pitfalls and risks](https://quesma.com/blog-detail/schema-migrations)
+
+---
+
+### Pitfall 4: Missing Data Migration for Existing Products
+
+**What goes wrong:** New option groups schema is deployed, but existing products with matrices have no migration path. API calls for existing products fail because they lack the new option groups structure. Merchants can't use new features on existing products without recreating everything from scratch.
+
+**Why it happens:** Developers add new tables/columns but don't write migrations for existing data. Assume "new feature, new data" but existing products need backwards compatibility. Schema changes treated as purely additive without considering existing records.
+
+**Consequences:**
+- Existing merchants can't use option groups without deleting and recreating matrices
+- Widget breaks for previously working products
+- REST API errors: "option groups not found" for valid products
+- Poor merchant experience: "I have to redo all my work?"
+- App store rejection: reviewers test with existing data, finds breakage
+- Emergency hotfix required post-deployment
+
+**Prevention:**
+- Write Prisma migration that adds new tables without breaking existing data
+- Default behavior: products without option groups = empty array (not null/error)
+- API backwards compatibility: `/price` endpoint works with or without option groups
+- Widget graceful degradation: renders dimension inputs only if no option groups
+- Admin UI: clearly show which products have option groups enabled
+- Test migration on copy of production database before deploying
+- Deploy in phases: (1) schema + backwards compat, (2) enable features, (3) remove old code
+
+**Detection:**
+- Test on development database with real production data copy
+- API test suite: run against products created before schema change
+- Load existing product in admin UI and verify no errors
+- Widget rendering test with pre-migration product IDs
+- Monitor error rates immediately after deployment
+
+**Phase to address:** Option Groups Data Model & Migration (before deployment)
+
+**Sources:**
+- [Database Migrations: Safe, Downtime-Free Strategies](https://vadimkravcenko.com/shorts/database-migrations/)
+- [Safely making database schema changes](https://planetscale.com/blog/safely-making-database-schema-changes)
+
+---
+
+### Pitfall 5: REST API Breaking Changes Without Versioning
+
+**What goes wrong:** The `/price` endpoint signature changes to require option group selections, breaking existing merchant integrations. Merchants using the REST API directly (not the widget) experience errors when upgrading. No API versioning means no smooth migration path.
+
+**Why it happens:** Developers modify existing endpoints instead of creating versioned endpoints. Assume all users go through the widget, forgetting direct API consumers. Focus on new features without considering backwards compatibility.
+
+**Consequences:**
+- Breaking change for merchants with custom storefront integrations
+- Production errors on merchant sites without warning
+- Support tickets: "Your API stopped working"
+- Merchant churn: "We can't trust this app"
+- Emergency rollback required
+- Loss of developer credibility
+
+**Prevention:**
+- API versioning strategy: `/api/v1/price` remains unchanged, add `/api/v2/price` with option groups
+- Make option groups optional in API: `optionSelections?: Array<{groupId, choiceId}>`
+- Backwards compatibility: if no options provided, calculate base matrix price only
+- Document migration guide: "v1 deprecated, migrate to v2 by [date]"
+- Return API version in response headers: `X-API-Version: 2`
+- Widget uses v2, direct integrations can choose when to migrate
+- Announce changes to merchants with migration timeline (30-60 days)
+
+**Detection:**
+- Integration tests for both v1 (legacy) and v2 (new) endpoints
+- Monitor v1 endpoint usage to know when safe to deprecate
+- Test existing merchant integrations before deployment (ask for test stores)
+- Semantic versioning for widget package: major version bump (0.1.0 → 1.0.0)
+- Documentation clearly shows both versions with migration path
+
+**Phase to address:** REST API Enhancement (after data model, before widget update)
+
+**Sources:**
+- [API Versioning Best Practices for Backward Compatibility](https://endgrate.com/blog/api-versioning-best-practices-for-backward-compatibility)
+- [How to handle versioning and backwards compatibility of APIs](https://www.theplatformpm.com/articles/how-to-handle-versioning-and-backwards-compatibility-of-apis)
+
+---
+
+### Pitfall 6: Cognitive Overload from Too Many Option Dropdowns
+
+**What goes wrong:** Merchants create 5+ option groups per product (e.g., glass type, coating, tint, edge work, corner style), resulting in a widget with 7 total inputs (width + height + 5 dropdowns). Users face decision paralysis, abandon cart, or select wrong options.
+
+**Why it happens:** Merchants have complex product catalogs and want to model every variation. No UX guidance on maximum recommended options. Admin UI doesn't warn about cognitive load. Developers enable unlimited option groups without considering user experience.
+
+**Consequences:**
+- High cart abandonment rates
+- Poor mobile UX (7+ form fields)
+- Increased customer support: "How do I choose?"
+- Incorrect orders: customers rush through too many choices
+- Accessibility issues: excessive tab navigation for keyboard users
+- Merchant complaints: "Customers aren't completing orders"
+
+**Prevention:**
+- Admin UI guidance: recommend maximum 3-4 option groups per product
+- Warning banner in admin: "More than 4 option groups may overwhelm customers"
+- Widget UX patterns for large option sets:
+  - Collapsible sections: "Advanced Options" collapsed by default
+  - Smart defaults: auto-select most common choices
+  - Progressive disclosure: show relevant options based on previous selections
+  - Step wizard for 5+ options: dimensional inputs → basic options → advanced options
+- Mobile-optimized dropdowns: minimum 48x48px tap targets
+- Help text for each option: explain what customers are choosing
+- Group related options visually (border/background)
+- Consider multi-step configuration for complex products
+
+**Detection:**
+- User testing with 5+ option groups on mobile
+- Analytics: time spent on product page vs. cart abandonment
+- Heatmaps: are users interacting with all dropdowns?
+- Merchant feedback: "My conversion rate dropped"
+- Accessibility audit: keyboard navigation through all inputs
+
+**Phase to address:** Widget UX Enhancement (after basic option groups working)
+
+**Sources:**
+- [Dropdown UI Design: Anatomy, UX, and Use Cases](https://www.setproduct.com/blog/dropdown-ui-design)
+- [Best Practices for Designing Drop-Down Menu](https://vareweb.com/blog/best-practices-for-designing-drop-down-menu/)
+
+---
+
+### Pitfall 7: Price Flicker When Option Selections Change
+
+**What goes wrong:** User selects an option, price disappears or shows "Calculating..." for 200-500ms, then new price appears. This flicker happens on every option change, creating a janky, unprofessional experience. Users lose confidence: "Is this the right price?"
+
+**Why it happens:** Widget makes synchronous API call to `/price` endpoint for every option change. No optimistic UI updates. Loading state replaces price display instead of showing alongside it. Network latency causes visible delay.
+
+**Consequences:**
+- Poor perceived performance
+- User frustration: "Why is this so slow?"
+- Looks unprofessional compared to competitors
+- Users doubt price accuracy during flicker
+- Accessibility issue: screen readers announce "loading" repeatedly
+- Mobile users on slow networks experience 1-2 second delays
+
+**Prevention:**
+- Optimistic UI updates: calculate price client-side immediately, verify with API in background
+- Show loading indicator next to price, not instead of price: "$123.45 ⟳"
+- Debounce API calls: wait 150ms after last option change before requesting
+- Client-side price calculation logic (duplicate server logic): instant feedback
+- React `useOptimistic` hook for immediate state updates
+- Preload all option prices on widget initialization (if small dataset)
+- Cache API responses in memory: same configuration = no API call
+- Animated number transitions instead of abrupt changes: $100 → $110 → $120
+- Loading state only for initial load, not for option changes
+
+**Detection:**
+- Manual testing on throttled network (Chrome DevTools: Slow 3G)
+- Measure time between option change and price update
+- User testing: "Does this feel fast?"
+- Lighthouse performance score for widget page
+- Monitor API response times: should be <100ms p95
+
+**Phase to address:** Widget UX Enhancement (after basic option groups working)
+
+**Sources:**
+- [Understanding optimistic UI and React's useOptimistic Hook](https://blog.logrocket.com/understanding-optimistic-ui-react-useoptimistic-hook/)
+- [React 19 useOptimistic Hook Breakdown](https://dev.to/dthompsondev/react-19-useoptimistic-hook-breakdown-5g9k)
+
+---
+
+### Pitfall 8: Missing App Store Performance Requirements
+
+**What goes wrong:** App adds significant load time to Shopify admin pages or reduces merchant store Lighthouse scores. App store review rejects submission for poor performance. Reviewers find response times >500ms or Lighthouse score drops >10%.
+
+**Why it happens:** Developers test on fast networks and local databases. Don't measure performance impact on real Shopify stores. Unoptimized database queries (N+1 problems). No performance monitoring before submission.
 
 **Consequences:**
 - Automatic app store rejection
-- Merchant complaints about broken themes
-- Poor reviews citing performance degradation
-- Manual cleanup burden on merchants
+- Months of work blocked from launch
+- Need to rewrite slow queries/components before resubmission
+- Merchant stores become slower (poor reviews)
+- App uninstalls due to performance
+- Cannot earn "Built for Shopify" badge
 
 **Prevention:**
-- Use Theme App Extensions (App Blocks/App Embeds) instead of Script Tags
-- Theme App Extensions are automatically removed by Shopify on uninstall
-- For headless React widgets: Ship as npm package, not theme injection
-- Never write directly to theme Liquid files
+- Performance budgets: <500ms response time for 95% of requests
+- Webhooks respond within 200ms (Shopify times out after 5 seconds)
+- Database query optimization:
+  - Use Prisma `include` carefully (avoid N+1)
+  - Add indexes for foreign keys: `storeId`, `matrixId`, `productId`
+  - Limit queries: don't fetch all records without pagination
+- Lighthouse testing on real stores before submission:
+  - Test home page and product pages with widget
+  - Ensure Lighthouse score doesn't drop >10%
+- Use Vercel Analytics/Edge Functions for performance monitoring
+- Load testing: simulate 100 concurrent users
+- React.lazy() for code splitting: widget components loaded on demand
+- Memoize expensive calculations: `React.memo`, `useMemo`
 
 **Detection:**
-- App store review tests uninstall process
-- Monitor for support tickets mentioning "leftover code" or "scripts not loading"
+- Lighthouse CI in deployment pipeline
+- Load testing with k6 or Artillery
+- New Relic / Vercel Analytics for production monitoring
+- Shopify's "Built for Shopify" performance webinar checklist
+- Test on Shopify's development stores (realistic environment)
 
-**Phase mapping:** Must be in App Foundation/Embedded UI phase. Don't defer to later.
+**Phase to address:** Pre-submission Performance Audit (before App Store submission)
 
 **Sources:**
-- [How to pass Shopify app store review (Gadget)](https://gadget.dev/blog/how-to-pass-the-shopify-app-store-review-the-first-time-part-1-the-technical-bit)
-- [Common app rejections](https://shopify.dev/docs/apps/store/review/common-rejections)
-- [About Theme App Extensions](https://shopify.dev/docs/apps/build/online-store/theme-app-extensions)
+- [About performance optimization](https://shopify.dev/docs/apps/build/performance)
+- [Shopify App Development: Building High-Performance Extensions](https://speedboostr.com/shopify-app-development-building-high-performance-extensions-in-2025/)
+- [Improve admin performance FAQ](https://community.shopify.dev/t/improve-admin-performance-faq/1100)
 
 ---
 
-### Pitfall 2: Third-Party Cookies for Embedded App Sessions
+### Pitfall 9: Incomplete App Store Listing Metadata
 
-**What goes wrong:** Embedded apps that use third-party cookies for session management fail in Safari, Firefox, and Chrome Incognito. Users get stuck in redirect loops or can't authenticate.
+**What goes wrong:** App submission is rejected for missing required screenshots (need 3 desktop at 1600x900px), poorly written descriptions with keyword stuffing, app name >30 characters, or feature images without alt text. Reviewers reject immediately without reviewing functionality.
 
-**Why it happens:** Browsers block third-party cookies by default. Developers assume traditional cookie-based sessions will work in iframes.
-
-**Consequences:**
-- App store rejection (mandatory check since late 2025)
-- App completely broken for 30%+ of merchants
-- "Built for Shopify" badge denied
-- Cannot function as embedded app
-
-**Prevention:**
-- Use Shopify session tokens (JWT) with App Bridge
-- Session tokens are short-lived (1 minute) and signed by shared secret
-- Use `authenticatedFetch` from App Bridge (handles tokens automatically)
-- For server-side: Verify session token signature, extract shop info
-- Never store session in cookies for embedded context
-
-**Detection:**
-- Test in Safari and Firefox immediately
-- Check Network tab for blocked cookies
-- App store review runs automated embedded app checks
-
-**Phase mapping:** Must be in Authentication phase. Breaks entire app if wrong.
-
-**Sources:**
-- [About session tokens](https://shopify.dev/docs/apps/build/authentication-authorization/session-tokens)
-- [Set up session tokens](https://shopify.dev/docs/apps/build/authentication-authorization/session-tokens/set-up-session-tokens)
-- [Session token authentication issue](https://community.shopify.com/t/session-token-authentication-issue-for-built-for-shopify-badge/416552)
-
----
-
-### Pitfall 3: Missing GDPR Compliance Webhooks
-
-**What goes wrong:** Public apps without GDPR webhooks (`customers/data_request`, `customers/redact`, `shop/redact`) are automatically rejected at app store review.
-
-**Why it happens:** Developers focus on functional features first, assume compliance can be added later. GDPR webhooks are mandatory but not enforced during development.
+**Why it happens:** Developers focus on building features, treat app listing as afterthought. Don't read Shopify's listing requirements documentation. Copy descriptions from competitors without understanding guidelines. Rush submission without design resources.
 
 **Consequences:**
-- Instant app store rejection
-- Cannot list app publicly
-- 30-day deadline to fulfill data requests (legal requirement)
-- Potential GDPR violations if merchant requests data deletion
+- Immediate rejection at first screening (before technical review)
+- Delays launch by weeks waiting for resubmission review
+- Multiple rejection cycles if issues not fully addressed
+- Poor app store presentation even if approved
+- Low conversion rate: merchants don't understand value proposition
+- Missing SEO opportunity in app store search
 
 **Prevention:**
-- Register all three webhooks before app submission:
-  - `customers/data_request` - Log request, return customer data within 30 days
-  - `customers/redact` - Delete customer data from your database
-  - `shop/redact` - Delete all shop data 48 hours after uninstall
-- Respond with 200 status code immediately (process async)
-- Implement actual data deletion logic (not just stub endpoints)
-- Test with Shopify's webhook testing tool
+- **Screenshots:** Exactly 3 desktop (1600x900px), crop browser/desktop backgrounds, focus on app functionality
+- **App name:** ≤30 characters, matches TOML configuration, no "Shopify" trademark
+- **Introduction:** 100 characters, benefit-focused, avoid keyword stuffing, complete sentences
+- **Description:** 500 characters, explain functionality clearly, avoid excessive marketing language
+- **Features:** ≤80 characters each, focus on merchant benefits not technical details
+- **Feature images:** Solid backgrounds, 4.5:1 contrast ratio, always include alt text
+- **No PII, pricing, or outcome guarantees** in images/descriptions
+- Use Shopify's app listing preview tool before submission
+- Get design help for screenshots (Polaris-style mockups)
+- Read entire [App Store requirements](https://shopify.dev/docs/apps/launch/shopify-app-store/app-store-requirements) documentation
 
 **Detection:**
-- App store review checks for webhook registration
-- Check Partner Dashboard → App → Configuration → Webhooks
-- Missing URLs = automatic rejection
+- Compare listing to requirements checklist before submission
+- Ask colleague to review listing: "Is this clear?"
+- Test app name in TOML vs. Partner Dashboard (must match)
+- Verify all images are exact required dimensions
+- Run descriptions through readability checker (avoid jargon)
 
-**Phase mapping:** Add in Data Model phase when Prisma schema is defined. Need to know what data to delete.
-
-**Sources:**
-- [Privacy law compliance](https://shopify.dev/docs/apps/build/compliance/privacy-law-compliance)
-- [How to configure GDPR webhooks](https://medium.com/@muhammadehsanullah123/how-to-configure-gdpr-compliance-webhooks-in-shopify-public-apps-b2107721a58f)
-- [GDPR webhook setup guide](https://community.shopify.com/t/how-to-configure-and-test-gdpr-mandatory-webhooks/105168)
-
----
-
-### Pitfall 4: Prisma Connection Exhaustion on Vercel
-
-**What goes wrong:** Each Vercel serverless function invocation opens new database connections. Database quickly hits connection limit (Postgres default: 100), causing "too many connections" errors and app downtime.
-
-**Why it happens:** Serverless functions don't maintain persistent connections. Prisma creates connection pools per invocation. Cold starts multiply the problem.
-
-**Consequences:**
-- Production app crashes under moderate load
-- Database refuses new connections
-- Merchants unable to create orders
-- Emergency migration to different architecture
-
-**Prevention:**
-- **Option 1 (Recommended):** Use Prisma Accelerate (managed connection pooler)
-- **Option 2:** Use Vercel Fluid Compute with `attachDatabasePool`
-- **Option 3:** Use Prisma Postgres (built-in pooling, serverless optimized)
-- **Option 4:** Use PgBouncer or Supabase pooler in front of database
-- Set small connection pool size in Prisma (e.g., `connection_limit=1`)
-- Use serverless-friendly DB like Neon, PlanetScale, Supabase
-
-**Detection:**
-- Load test with 50+ concurrent requests
-- Monitor database connection count
-- Watch for "remaining connection slots reserved" errors
-- Check CloudWatch/Vercel logs for connection errors
-
-**Phase mapping:** Must be decided in Infrastructure Setup phase. Cannot retrofit easily.
+**Phase to address:** App Store Submission Preparation (final phase before submission)
 
 **Sources:**
-- [Deploy to Vercel (Prisma)](https://www.prisma.io/docs/orm/prisma-client/deployment/serverless/deploy-to-vercel)
-- [Connection pooling with Vercel Functions](https://vercel.com/kb/guide/connection-pooling-with-functions)
-- [Prisma connection pooling discussion](https://github.com/prisma/prisma/discussions/24497)
-
----
-
-### Pitfall 5: Draft Orders API Rate Limits Not Handled
-
-**What goes wrong:** Apps hit Draft Orders rate limit (5 per minute on dev/trial stores, 2 requests/sec on production) without backoff logic. Requests fail with 429 errors, merchants can't create orders.
-
-**Why it happens:** Developers test with low volume, don't implement retry logic. Rate limits are much stricter on development stores.
-
-**Consequences:**
-- App unusable for merchants with bulk pricing updates
-- Data loss when Draft Order creation silently fails
-- Negative reviews citing "doesn't work"
-- Cannot handle multiple customers simultaneously
-
-**Prevention:**
-- Implement exponential backoff with jitter for 429 responses
-- Check `Retry-After` header and wait specified seconds
-- Queue Draft Order requests (e.g., BullMQ, Vercel Queue)
-- Show loading states, don't make merchants wait synchronously
-- Test with production-level volume (50+ draft orders)
-- Consider Bulk Operations API for large batches
-
-**Detection:**
-- Check response headers for `X-Shopify-Shop-Api-Call-Limit`
-- Monitor 429 error rates in production logs
-- Load test: Create 10 draft orders simultaneously
-
-**Phase mapping:** Add in Draft Orders API Integration phase. Don't wait for production.
-
-**Sources:**
-- [Shopify API rate limits](https://shopify.dev/docs/api/usage/limits)
-- [REST Admin API rate limits](https://shopify.dev/docs/api/admin-rest/usage/rate-limits)
-- [4 strategies for rate limits](https://kirillplatonov.com/posts/shopify-api-rate-limits/)
-
----
-
-### Pitfall 6: REST API Without HMAC Verification
-
-**What goes wrong:** Your public REST API for headless storefronts has API key authentication but no request signature verification. Attackers replay captured requests, modify prices, or flood your API.
-
-**Why it happens:** Developers implement simple API key auth (bearer tokens) without understanding replay attack vectors. HMAC signatures seem like overkill for "internal" API.
-
-**Consequences:**
-- Price manipulation (attacker modifies request body)
-- Replay attacks (reuse captured requests)
-- API key leaks = full compromise
-- Cannot detect tampered requests
-- Fail PCI/SOC2 audits
-
-**Prevention:**
-- Use HMAC-SHA256 request signing (Shopify-style):
-  - Client: `HMAC(secret, timestamp + method + path + body)` → signature in header
-  - Server: Recompute signature, compare with header
-  - Reject if timestamp > 5 minutes old (prevent replay)
-- Store API keys hashed (bcrypt/argon2), not plaintext
-- Rotate keys regularly, support multiple active keys
-- Rate limit per API key (prevent brute force)
-- Use HTTPS only (enforce in middleware)
-- Log all API requests for audit trail
-
-**Detection:**
-- Security audit flags "no request signing"
-- Pen test shows replay attack vulnerability
-- Try replaying captured request 10 minutes later (should fail)
-
-**Phase mapping:** Must be in REST API phase. Retrofitting auth is painful.
-
-**Sources:**
-- [REST API security best practices (2026)](https://www.levo.ai/resources/blogs/rest-api-security-best-practices)
-- [Shopify app security practices](https://shinedezigninfonet.com/blog/shopify-app-security-ensuring-safe-customer-experience/)
-- [Best Shopify API security practices](https://ecomxagency.com/blogs/shopify/shopify-rest-api)
-
----
-
-### Pitfall 7: Using Shopify Billing API Wrong (or Not At All)
-
-**What goes wrong:** App uses Stripe/PayPal for subscription charges instead of Shopify Billing API. App store rejects it, or charges fail because merchants don't have payment method on file.
-
-**Why it happens:** Developers assume they can use their own payment processing. Shopify Billing API seems more restrictive than familiar payment gateways.
-
-**Consequences:**
-- App store rejection (Billing API is mandatory)
-- Cannot charge merchants through Shopify admin
-- No automatic billing integration
-- Higher churn (separate payment flow)
-- Violates Shopify terms of service
-
-**Prevention:**
-- All app charges MUST use Shopify Billing API (RecurringApplicationCharge, UsageCharge)
-- Only exception: Cost of goods sold (physical products) can use external PCI-compliant gateway
-- Use AppSubscriptionCreate mutation (GraphQL) or RecurringApplicationCharge (REST, legacy)
-- Test return URL flow (merchant approves charge → redirect back to app)
-- Handle declined charges gracefully
-- Don't ask for credit card in your app UI
-
-**Detection:**
-- App store review checks for Billing API usage
-- Search code for "stripe", "paypal" in subscription context
-- Verify all charges show in Shopify admin billing
-
-**Phase mapping:** Add in Subscription Management phase. Required for paid app.
-
-**Sources:**
-- [About billing for your app](https://shopify.dev/docs/apps/launch/billing)
 - [App Store requirements](https://shopify.dev/docs/apps/launch/shopify-app-store/app-store-requirements)
-- [Billing API mandatory discussion](https://community.shopify.com/t/using-shopify-billing-api-mandatory-for-apps-on-app-store/257393)
+- [Checklist of requirements for apps in the Shopify App Store](https://shopify.dev/docs/apps/launch/app-requirements-checklist)
+- [Listing your app on Shopify App Store — Points to Keep in Mind](https://onlyoneaman.medium.com/listing-your-app-on-shopify-app-store-points-to-keep-in-mind-3e7f09d9b80b)
 
 ---
 
-### Pitfall 8: Draft Orders Inventory Confusion
+### Pitfall 10: Inadequate Accessibility for Option Groups
 
-**What goes wrong:** Developers expect creating a Draft Order to reduce inventory. It doesn't. Inventory only adjusts when draft order converts to real order, causing overselling or inventory sync issues.
+**What goes wrong:** Option group dropdowns lack proper ARIA labels, keyboard navigation is broken (tab order skips inputs), screen readers announce wrong information, or color contrast fails WCAG 2.1 AA standards. App store review rejects for accessibility violations.
 
-**Why it happens:** Draft Order API name implies it's a "real order" that should affect inventory. Documentation is easy to miss.
+**Why it happens:** Developers test with mouse only, don't use screen readers or keyboard-only navigation. Copy-paste dropdown code without accessibility attributes. Assume Polaris components are automatically accessible (they need proper props). Color contrast not verified against WCAG standards.
 
 **Consequences:**
-- Inventory overselling (merchant thinks stock is reserved)
-- Inventory sync errors with ERP systems
-- Customer complaints about out-of-stock items
-- Manual inventory adjustments required
+- App store rejection for accessibility violations
+- Cannot earn "Built for Shopify" badge
+- Legal risk: ADA compliance issues
+- Excludes disabled merchants and their customers
+- Poor user experience for keyboard-only users
+- Screen reader users can't complete checkout
 
 **Prevention:**
-- Understand: Draft Orders DO NOT affect inventory until completed
-- Use `reserve_inventory_until` field to reserve stock (but only from default location)
-- Warning: "Currently draft orders cannot have a location set via GraphQL" (uses default location only)
-- Implement inventory checks BEFORE creating Draft Order
-- Show accurate "available" inventory in UI (query InventoryLevel)
-- Document this behavior for merchants
+- **Keyboard navigation:** All dropdowns operable with Tab, Arrow keys, Enter, Escape
+- **ARIA labels:** Each option group has `aria-label` or associated `<label>` element
+- **Focus management:** Visible focus indicators (not `outline: none`), logical tab order
+- **Screen reader testing:** Test with VoiceOver (Mac) or NVDA (Windows)
+- **Color contrast:** WCAG 1.4.3 (Level AA) requires 4.5:1 for text, verify with tools
+- **Error messages:** Announce validation errors with `aria-live="polite"`
+- **Mobile tap targets:** Minimum 48x48px for dropdown triggers
+- **Semantic HTML:** Use native `<select>` or properly implemented custom dropdown with `role="listbox"`
+- Polaris components: Pass required accessibility props (`label`, `labelHidden` if needed)
+- Test with Shopify's accessibility best practices: [Accessibility best practices for Shopify apps](https://shopify.dev/docs/apps/build/accessibility)
 
 **Detection:**
-- Create draft order → Check inventory count (should be unchanged)
-- Complete draft order → Check again (now reduced)
-- Test with multi-location setup (reveals location limitation)
+- Keyboard-only testing: unplug mouse, navigate entire widget
+- Screen reader testing: VoiceOver on Mac or NVDA on Windows
+- axe DevTools browser extension: automated accessibility audit
+- Lighthouse accessibility score: must be 90+
+- Color contrast checker: verify all text meets WCAG AA
+- Tab order verification: focus moves logically through inputs
 
-**Phase mapping:** Must understand in Draft Orders Integration phase. Core feature behavior.
+**Phase to address:** Widget UX Enhancement & Pre-submission Audit (before App Store submission)
 
 **Sources:**
-- [DraftOrder REST API](https://shopify.dev/docs/api/admin-rest/latest/resources/draftorder)
-- [Draft Orders API limitations](https://community.shopify.dev/t/draft-orders-api-limitations/19710)
-- [Mastering Draft Orders API](https://www.hulkapps.com/blogs/shopify-hub/mastering-shopifys-api-for-draft-orders-a-comprehensive-guide)
+- [Accessibility best practices for Shopify apps](https://shopify.dev/docs/apps/build/accessibility)
+- [Dropdown UI Design: Anatomy, UX, and Use Cases](https://www.setproduct.com/blog/dropdown-ui-design)
+- [Shopify Accessibility Conformance Report WCAG Edition](https://www.shopify.com/accessibility/vpat-checkout)
 
 ---
 
-## Moderate Pitfalls
+## Technical Debt Patterns
 
-Mistakes that cause delays, technical debt, or poor merchant experience.
+Shortcuts that seem reasonable but create long-term problems.
 
-### Pitfall 9: Webhook Delivery Assumptions
-
-**What goes wrong:** Developers rely solely on webhooks for data sync. Webhooks occasionally fail to deliver (network issues, service downtime), causing data inconsistencies.
-
-**Why it happens:** Webhook documentation makes delivery seem guaranteed. Shopify retries for 4 hours but then gives up.
-
-**Consequences:**
-- Missing orders/products in app database
-- Out-of-sync price matrices
-- Merchants report "app doesn't show my products"
-- Manual data fixes required
-
-**Prevention:**
-- Webhooks are "best effort", not guaranteed
-- Implement reconciliation jobs (background tasks that poll API):
-  - Every 15 minutes: Fetch products/orders with `updated_at > last_sync_time`
-  - Use GraphQL `updatedAt` filter for efficiency
-- Make webhook handlers idempotent (safe to process twice)
-- Log webhook deliveries, alert on missing sequences
-- Use Amazon EventBridge or Google Pub/Sub for high-volume apps
-- Respond to webhooks within 5 seconds (defer processing)
-
-**Detection:**
-- Turn off app server for 5 hours → Check for missed data
-- Compare webhook log count vs actual Shopify changes
-- Monitor webhook subscription status (deleted after repeated failures)
-
-**Phase mapping:** Add reconciliation in Webhook System phase. Don't wait for bugs.
-
-**Sources:**
-- [Webhook best practices](https://shopify.dev/docs/apps/build/webhooks/best-practices)
-- [Shopify webhooks reliability guide (Hookdeck)](https://hookdeck.com/webhooks/platforms/shopify-webhooks-best-practices-revised-and-extended)
-- [Troubleshooting webhooks](https://shopify.dev/docs/apps/build/webhooks/troubleshooting-webhooks)
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Hard-code max 5 option groups per product | Simple validation, no complex UI | Cannot support merchants with 6+ legitimate options, requires code change to adjust | Only for MVP if documented as temporary limit |
+| Calculate prices client-side only (no server verification) | Instant UI updates, no API latency | Security risk: users can manipulate prices, no single source of truth | Never - always verify server-side |
+| Store option selections in Draft Order metadata as JSON | Easy to implement, flexible structure | Cannot query by option selections, hard to report, data format drifts | Never - use proper relational tables |
+| Skip API versioning "we'll handle it later" | Faster initial development | Breaking changes later require emergency hotfixes, no migration path | Never - versioning must be in initial design |
+| Use `toFixed(2)` everywhere for currency | Simple rounding solution | Floating-point errors remain, just hidden at display level | Never - use integer (cents) arithmetic |
+| Inline all option group logic in widget | No backend dependencies, works offline | Duplicate logic in server/client, hard to maintain, inconsistencies | Never for price calculations (security risk) |
+| No database indexes on option group foreign keys | Faster migrations, no index overhead | Slow queries as data grows, poor performance at scale | Only for local development databases |
+| Fetch all option groups for store on every API call | Simpler code, no pagination logic | Doesn't scale beyond 50-100 products, high memory usage | Only if documented max products is enforced |
 
 ---
 
-### Pitfall 10: API Version Drift
+## Integration Gotchas
 
-**What goes wrong:** App ships using GraphQL API version `2024-10`. Shopify releases `2026-01` with breaking changes. Nine months later, `2024-10` is deprecated and app breaks in production.
+Common mistakes when connecting to external services.
 
-**Why it happens:** Developers hard-code API version and never update. No monitoring for deprecation warnings.
-
-**Consequences:**
-- Production app breaks without warning
-- Emergency migration under time pressure
-- Breaking changes require code rewrites
-- Merchant downtime and churn
-
-**Prevention:**
-- Stable API versions supported for 12 months (9-month overlap)
-- Update to latest stable version every quarter
-- Monitor `X-Shopify-API-Deprecated-Reason` response header
-- Use Partner Dashboard "API Health" report (shows deprecated endpoints)
-- Set calendar reminder to check for new versions
-- Test against unstable API versions before they stabilize
-- Important 2026 deadlines:
-  - Custom apps in admin disabled Jan 1, 2026
-  - Shopify Scripts end-of-life June 30, 2026
-  - Idempotency mandatory for mutations April 2026
-
-**Detection:**
-- Check current API version in code
-- Compare against latest stable (currently 2026-01)
-- Look for deprecation warnings in Vercel logs
-
-**Phase mapping:** Set up monitoring in Infrastructure phase. Schedule quarterly updates.
-
-**Sources:**
-- [About API versioning](https://shopify.dev/docs/api/usage/versioning)
-- [2025-01 release notes](https://shopify.dev/docs/api/release-notes/2025-01)
-- [API deprecations at Shopify](https://www.shopify.com/partners/blog/api-deprecation)
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| Shopify Draft Orders API | Setting `originalUnitPrice` with `variantId` present (Shopify ignores price) | Use custom line items without `variantId`, set `customAttributes` for dimension data |
+| Shopify Product API | Assuming products never deleted, causing orphaned option group assignments | Handle webhook `products/delete`, cascade delete `ProductOptionGroup` records |
+| Shopify Webhooks (GDPR) | Implementing stub endpoints that don't actually delete data | Actually delete data from database, test with shop/redact webhook, respond <200ms |
+| REST API CORS | Forgetting OPTIONS preflight needs 204 before auth | Handle OPTIONS requests before authentication, return 204 with CORS headers |
+| Vercel Serverless Functions | Storing rate limit data in memory (lost between invocations) | Use Redis (Vercel KV) or database for rate limiting state |
+| Neon PostgreSQL | Using connection pooling wrong, exhausting connections | Use Prisma with `@prisma/adapter-pg` and proper pool size configuration |
+| npm Widget Package | Breaking changes in patch versions (semver violation) | Follow semantic versioning strictly: patches = bugfixes only, minor = new features (backwards compatible), major = breaking changes |
+| Shadow DOM Widget | External CSS can't style widget, merchants complain | Design decision: explain in docs, provide CSS custom properties for theming |
 
 ---
 
-### Pitfall 11: Over-Requesting Access Scopes
+## Performance Traps
 
-**What goes wrong:** App requests `read_products`, `write_products`, `read_customers`, `write_customers`, `read_orders`, `write_orders` because "we might need them later". Merchants see scary permission list and don't install.
+Patterns that work at small scale but fail as usage grows.
 
-**Why it happens:** Developers request all potentially useful scopes upfront. Not aware of optional scopes or scope review process.
-
-**Consequences:**
-- Lower install conversion rate
-- App store review may question excessive scopes
-- Higher security risk if API token leaks
-- Shopify restricts scopes without legitimate use case
-
-**Prevention:**
-- Follow least privilege principle: Only request scopes you need NOW
-- For Draft Orders app with custom pricing:
-  - Required: `read_products`, `write_draft_orders`, `read_price_rules` (if using)
-  - Not needed: `write_customers`, `write_inventory`, `write_orders`
-- Use optional scopes for features that aren't core
-- Document why each scope is needed (for app review)
-- Request additional scopes dynamically when merchant enables feature
-- Review scopes before each app submission
-
-**Detection:**
-- List scopes in `shopify.app.toml`
-- Ask: "What breaks if we remove this scope?"
-- Compare against competitor apps (Partner Dashboard → App Store)
-
-**Phase mapping:** Define in App Setup phase. Audit before each submission.
-
-**Sources:**
-- [Shopify API access scopes](https://shopify.dev/docs/api/usage/access-scopes)
-- [Manage access scopes](https://shopify.dev/docs/apps/build/authentication-authorization/app-installation/manage-access-scopes)
-- [Best Shopify app security practices](https://shinedezigninfonet.com/blog/shopify-app-security-ensuring-safe-customer-experience/)
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| N+1 query: fetch option groups for each product individually | Slow product list page, timeouts on matrices index | Use Prisma `include: { optionGroups: true }` in initial query | >10 products with option groups |
+| Load all option group choices into widget state at once | High initial load time, large bundle size | Lazy-load option choices on dropdown open | >50 total choices across all groups |
+| Recalculate price on every keystroke in dimension inputs | High API request volume, rate limiting kicks in | Debounce price calculations (150ms after last input) | >10 concurrent widget users |
+| No pagination on matrices list | Admin UI becomes unusable, timeouts | Implement cursor pagination (Prisma `take`/`skip`), default 20 per page | >50 matrices per store |
+| Store full Shopify product data in database | Database bloat, stale data, slow queries | Store only `productId` and `productTitle`, fetch rest from Shopify API as needed | >1000 products per store |
+| In-memory rate limiting (current implementation) | Rate limits don't work across Vercel instances, inconsistent enforcement | Migrate to Redis (Vercel KV) for shared rate limit state | >1 Vercel instance (current state) |
+| Linear search through option choices to find selection | Slow widget response, janky UI | Use Map/Object for O(1) lookup: `choicesById[id]` | >20 choices per option group |
 
 ---
 
-### Pitfall 12: Remix Template Not Updated for React Router
+## Security Mistakes
 
-**What goes wrong:** Developer uses `shopify app init` and gets Remix template. Builds entire app on Remix. Shopify announces "use React Router instead" in late 2025.
+Domain-specific security issues beyond general web security.
 
-**Why it happens:** Shopify CLI still generates Remix templates. Developers don't check recent announcements.
-
-**Consequences:**
-- Building on deprecated framework
-- Will need to migrate to React Router eventually
-- Community support shifts to React Router
-- Examples and tutorials diverge
-
-**Prevention:**
-- **Important:** Shopify now recommends React Router for new apps (not Remix)
-- Check template before starting: `npm create @shopify/app@latest`
-- Follow Shopify's latest app templates documentation
-- Monitor Shopify changelog for framework recommendations
-- If using Remix:
-  - Be aware it's not the recommended path
-  - Plan for eventual React Router migration
-  - Use stable patterns (less refactoring later)
-
-**Detection:**
-- Check `package.json` for `@remix-run/*` dependencies
-- Review Shopify's current app template recommendations
-- Ask in Shopify dev Discord/forums about current stack
-
-**Phase mapping:** Decide in Project Setup phase (before writing code).
-
-**Sources:**
-- [Shopify Remix template GitHub](https://github.com/Shopify/shopify-app-template-remix)
-- [Unable to install Remix app discussion](https://community.shopify.com/t/unable-to-install-new-remix-app-on-production-stores-you-dont-have-this-app-installed/389199)
-- [@shopify/shopify-app-remix npm](https://www.npmjs.com/package/@shopify/shopify-app-remix)
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| Accept option selections from client without server validation | Price manipulation: users send fake option IDs to get lower prices | Always recalculate price server-side, validate option IDs exist and belong to product |
+| Store API keys in plain text | Credential theft, unauthorized API access | Hash API keys with bcrypt before storing, only show prefix to merchants |
+| No rate limiting on `/price` endpoint | DOS attacks, API abuse, Vercel bill explosion | Implement rate limiting (100 requests/minute per API key), consider Redis |
+| CORS wildcard `Access-Control-Allow-Origin: *` | API accessible from any origin, credential theft | Restrict to merchant's storefront domains or require API key validation |
+| Expose internal option group IDs in URLs | Enumeration attacks, access control bypass | Use UUIDs (cuid) not integers, verify storeId ownership on every query |
+| No CSRF protection on admin endpoints | Cross-site request forgery, unauthorized actions | Use Shopify session tokens (App Bridge), verify on every request |
+| Log sensitive data (API keys, prices) | Credential exposure, privacy violation | Sanitize logs, only log non-sensitive fields (storeId, action type) |
 
 ---
 
-### Pitfall 13: Not Testing Production OAuth Flow
+## UX Pitfalls
 
-**What goes wrong:** App works perfectly in development. Deploy to production, change app URL, OAuth redirect fails. Merchants get "redirect_uri mismatch" errors during installation.
+Common user experience mistakes in this domain.
 
-**Why it happens:** OAuth redirect URLs are environment-specific. Developers test installation once in dev, assume production works the same.
-
-**Consequences:**
-- Nobody can install production app
-- Launch day emergency
-- Manual redirect URL configuration needed
-- App store reviewers can't install app (automatic rejection)
-
-**Prevention:**
-- Update redirect URLs when deploying to production:
-  - Partner Dashboard → App Settings → URLs
-  - Set "App URL" to production domain (e.g., `https://pricing-app.vercel.app`)
-  - Set "Allowed redirection URL(s)" to callback URL (e.g., `https://pricing-app.vercel.app/api/auth/callback`)
-- Test full OAuth flow on production URL:
-  - Uninstall app from test store
-  - Click "Add app" from App Store
-  - Verify redirect works, access token obtained
-- Use environment variables for URLs (`.env.production`)
-- Don't hard-code `localhost` or dev URLs
-
-**Detection:**
-- Deploy to production → Try installing from fresh store
-- Check browser network tab for redirect chain
-- Verify callback URL matches Partner Dashboard settings
-
-**Phase mapping:** Test in Deployment phase, before app submission.
-
-**Sources:**
-- [Common rejections - OAuth flow](https://shopify.dev/docs/apps/store/review/common-rejections)
-- [Shopify app deployment issues](https://community.shopify.com/t/shopify-app-deployment-issues/292056)
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| No visual feedback when option selected | Users unsure if click registered, click again, confusion | Highlight selected option, show checkmark, announce to screen readers |
+| Price updates without showing what changed | Users don't understand why price increased | Show price breakdown: "Base: $100, Glass: +$20, Total: $120" |
+| Generic error messages: "Price calculation failed" | Users don't know what to do, abandon cart | Specific errors: "Please select a glass type to see price" |
+| Option groups load after dimension inputs | Layout shift, users already entering dimensions when dropdowns appear | Load all inputs together or show skeleton loaders |
+| No default option selections | Users must click every dropdown, decision fatigue | Smart defaults: pre-select most common choices, users can change |
+| Dropdown labels unclear: "Type", "Finish" | Users don't understand what to choose | Descriptive labels: "Glass Type", "Edge Finish", with help text |
+| No mobile optimization | Tiny dropdowns, hard to tap, zooming required | Minimum 48x48px tap targets, native `<select>` on mobile |
+| No way to reset configuration | Users stuck after wrong selection, must refresh page | "Reset to defaults" button, clear all selections action |
 
 ---
 
-### Pitfall 14: npm Package Without Proper Security Audit
+## "Looks Done But Isn't" Checklist
 
-**What goes wrong:** You publish React widget as npm package. Package includes dev dependencies with known vulnerabilities. Supply chain attack surfaces in merchant storefronts.
+Things that appear complete but are missing critical pieces.
 
-**Why it happens:** Developers run `npm publish` without security review. Don't understand difference between dependencies and devDependencies in published packages.
-
-**Consequences:**
-- Vulnerabilities exposed to all widget users
-- CVE-2025-55182 (React RCE) affects your package
-- Merchant storefronts compromised
-- Package unpublished by npm (breaks all installations)
-
-**Prevention:**
-- Run `npm audit --production` before publishing (checks prod dependencies only)
-- Fix all high/critical vulnerabilities
-- Recent critical: CVE-2025-55182 (React 19.0-19.2.0) - RCE vulnerability
-  - Update React to 19.0.1, 19.1.2, or 19.2.1+
-- Keep React and React-DOM updated
-- Use `.npmignore` to exclude dev files from package
-- Set `"files": ["dist"]` in `package.json` (only ship built files)
-- Monitor Snyk/GitHub alerts for dependency vulnerabilities
-- Consider using `npm provenance` for supply chain security
-
-**Detection:**
-- Run `npm audit --production` in CI pipeline
-- Check Snyk dashboard for published package
-- Download published package: `npm pack` → inspect contents
-
-**Phase mapping:** Add to Widget Development phase CI/CD pipeline.
-
-**Sources:**
-- [Critical React vulnerability CVE-2025-55182](https://react.dev/blog/2025/12/03/critical-security-vulnerability-in-react-server-components)
-- [React npm vulnerabilities (Snyk)](https://security.snyk.io/package/npm/react)
-- [npm audit documentation](https://docs.npmjs.com/auditing-package-dependencies-for-security-vulnerabilities/)
+- [ ] **Option Groups Feature:** Often missing server-side price validation — verify API recalculates price, client can't manipulate
+- [ ] **Price Calculation:** Often missing integer (cents) arithmetic — verify no floating-point math in critical paths
+- [ ] **API Versioning:** Often missing actual version logic — verify v1 and v2 both work, migration path documented
+- [ ] **Database Migration:** Often missing data for existing products — verify old products work without option groups
+- [ ] **Widget Integration:** Often missing error states — verify what happens if API down, network timeout, invalid response
+- [ ] **Accessibility:** Often missing keyboard navigation — verify tab order, arrow keys, Enter/Escape work
+- [ ] **Performance:** Often missing load testing — verify 100 concurrent users, slow network conditions
+- [ ] **GDPR Webhooks:** Often missing actual data deletion — verify shop/redact deletes option groups, not just acknowledges
+- [ ] **App Store Listing:** Often missing required alt text on images — verify all screenshots have accessibility text
+- [ ] **Draft Orders:** Often missing dimension metadata — verify width/height stored as line item properties for merchant reference
 
 ---
 
-## Minor Pitfalls
+## Recovery Strategies
 
-Mistakes that cause annoyance but are fixable. Still worth avoiding.
+When pitfalls occur despite prevention, how to recover.
 
-### Pitfall 15: Polaris Accessibility Violations
-
-**What goes wrong:** App UI fails WCAG 2.1 AA standards. Low color contrast, missing keyboard navigation, no ARIA labels. App store review flags accessibility issues.
-
-**Why it happens:** Developers use Polaris components incorrectly or build custom UI without accessibility considerations.
-
-**Consequences:**
-- App store review delay
-- Inaccessible to users with disabilities
-- Legal risk (ADA compliance)
-- Poor merchant experience
-
-**Prevention:**
-- Use Polaris components correctly (built-in WCAG compliance)
-- Required accessibility features:
-  - Color contrast ratios (4.5:1 for text, 3:1 for UI)
-  - Full keyboard navigation (tab order, focus indicators)
-  - Screen reader support (semantic HTML, ARIA labels)
-  - Form labels and error messages
-- Test with keyboard only (no mouse)
-- Run axe DevTools browser extension
-- Check Polaris component docs for accessibility guidance
-
-**Detection:**
-- Browser DevTools → Lighthouse → Accessibility score (target: 90+)
-- Use screen reader (NVDA/JAWS on Windows, VoiceOver on Mac)
-- Tab through entire UI, verify focus is visible
-
-**Phase mapping:** Include in UI Development phase. Cheaper to build right than fix later.
-
-**Sources:**
-- [Polaris accessibility foundation](https://polaris-react.shopify.com/foundations/accessibility)
-- [Shopify Polaris accessibility wins](https://a11ywins.tumblr.com/post/159988043603/shopify-polaris-design-system)
-- [App design guidelines](https://shopify.dev/docs/apps/design)
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| Floating-point price errors in production | MEDIUM | 1. Hotfix: wrap calculations in `Math.round(cents)` 2. Database audit: find incorrect Draft Orders 3. Refund affected customers 4. Full rewrite to integer arithmetic in next release |
+| Orphaned option groups after migration | LOW | 1. Write cleanup script: `DELETE FROM option_groups WHERE id NOT IN (...)` 2. Add foreign key constraints 3. Deploy background job for periodic cleanup |
+| API breaking changes deployed | HIGH | 1. Emergency rollback 2. Deploy v1/v2 versioning 3. Contact affected merchants 4. Offer migration support 5. Extended deprecation timeline (60 days) |
+| App store rejection for performance | MEDIUM | 1. Profile slow queries with Prisma query logging 2. Add database indexes 3. Implement caching layer 4. Resubmit with performance metrics 5. Timeline: 1-2 weeks |
+| Price flicker reported by users | LOW | 1. Implement optimistic UI updates 2. Deploy as minor version 3. Announce improvement to merchants 4. Timeline: 2-3 days |
+| Accessibility violations found | MEDIUM | 1. Audit with axe DevTools 2. Fix ARIA labels, keyboard nav 3. Screen reader testing 4. Resubmit app store review 5. Timeline: 1 week |
+| GDPR complaint: data not deleted | HIGH | 1. Investigate: was webhook received? Did deletion fail? 2. Manually delete data 3. Fix deletion logic 4. Verify with end-to-end test 5. Document incident 6. Timeline: immediate |
 
 ---
 
-### Pitfall 16: Draft Orders Purged After One Year
+## Pitfall-to-Phase Mapping
 
-**What goes wrong:** App relies on Draft Orders for audit trail or pricing history. Shopify automatically deletes draft orders created after April 1, 2025 that are inactive for one year. Historical data disappears.
+How roadmap phases should address these pitfalls.
 
-**Why it happens:** Developers don't read API change logs. Assume draft orders persist forever.
-
-**Consequences:**
-- Lost audit trail for custom pricing
-- Cannot reconstruct pricing history
-- Compliance issues if retention required
-- Merchant complaints about missing data
-
-**Prevention:**
-- Draft orders created ≥ April 1, 2025 are purged after 1 year inactivity
-- Store pricing history in YOUR database (Prisma models), not just in Shopify
-- When creating Draft Order, save:
-  - Product IDs, SKUs
-  - Custom prices applied
-  - Price matrix used
-  - Timestamp
-- Treat Draft Orders as transient (will eventually be deleted or completed)
-- Document data retention policy for merchants
-
-**Detection:**
-- Check Draft Order creation dates
-- Verify you have backup data in your database
-- Test: Can you recreate pricing history without Draft Order data?
-
-**Phase mapping:** Design data model in Database Schema phase to handle this.
-
-**Sources:**
-- [DraftOrder REST API](https://shopify.dev/docs/api/admin-rest/latest/resources/draftorder)
-- [Draft Orders limitations discussion](https://community.shopify.dev/t/draft-orders-api-limitations/19710)
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| Floating Point Rounding Errors | Phase 1: Option Groups Data Model & Price Calculation | Unit tests with currency edge cases, spreadsheet comparison |
+| Incorrect Modifier Order | Phase 1: Option Groups Data Model & Price Calculation | Unit test: base $100 + two 10% options = $120 not $121 |
+| Orphaned Option Groups | Phase 1: Option Groups Data Model | Database integrity checks, cascade delete tests |
+| Missing Data Migration | Phase 1: Option Groups Data Model | Test on production data copy, verify old products work |
+| API Breaking Changes | Phase 2: REST API Enhancement | Integration tests for v1 and v2, semantic versioning |
+| Cognitive Overload | Phase 3: Widget UX Enhancement | User testing with 5+ options, mobile testing |
+| Price Flicker | Phase 3: Widget UX Enhancement | Network throttling test, measure time to price update |
+| Performance Issues | Phase 4: Pre-submission Performance Audit | Lighthouse score, load testing, response time monitoring |
+| Incomplete Listing Metadata | Phase 5: App Store Submission Preparation | Checklist review, screenshot dimensions, description length |
+| Accessibility Violations | Phase 3: Widget UX Enhancement + Phase 4: Pre-submission Audit | Keyboard-only testing, screen reader testing, axe audit |
 
 ---
 
-### Pitfall 17: Hard-Coded Shopify Domain
+## Phase-Specific Research Flags
 
-**What goes wrong:** Code contains hard-coded `myshopify.com` domain checks. Custom domain stores fail authentication or webhooks.
+Phases likely to need deeper investigation during implementation.
 
-**Why it happens:** Examples show `shop.myshopify.com` format. Developers forget merchants can use custom domains.
-
-**Consequences:**
-- App breaks for custom domain stores
-- Webhook verification fails
-- OAuth redirect issues
-- Support tickets from subset of merchants
-
-**Prevention:**
-- Never check if shop ends with `.myshopify.com`
-- Use Shopify-provided shop domain from session/webhook
-- Webhook signature verification uses shop from webhook (not hard-coded domain)
-- OAuth flow: Use shop parameter from query string
-- Store shop domain in database exactly as Shopify provides it
-
-**Detection:**
-- Search code for `myshopify.com` string checks
-- Test with custom domain store (ask merchant or use test store with custom domain)
-
-**Phase mapping:** Avoid in Authentication phase when writing OAuth/webhook code.
-
----
-
-### Pitfall 18: Not Handling Async Draft Order Creation
-
-**What goes wrong:** Create Draft Order, immediately query it. Get 404 error because Shopify is still calculating shipping/taxes asynchronously.
-
-**Why it happens:** Draft Order endpoint returns `202 Accepted` (not `200 OK`) when calculations are pending. Developers don't check status code.
-
-**Consequences:**
-- Intermittent "Draft Order not found" errors
-- Race conditions in order flow
-- Poor user experience (order appears then disappears)
-
-**Prevention:**
-- Check response status code:
-  - `200 OK` → Draft Order ready
-  - `202 Accepted` → Still processing, poll later
-- If `202`, use `Location` header and `Retry-After` header:
-  - Wait `Retry-After` seconds (typically 1-2 seconds)
-  - GET the `Location` URL
-  - Repeat until `200 OK`
-- Show loading state to user during polling
-- Set max retry limit (e.g., 10 attempts)
-
-**Detection:**
-- Create Draft Order with complex shipping → Check status code
-- Create Draft Order with tax calculation → Watch for `202`
-- Load test: Create many draft orders quickly (increases async probability)
-
-**Phase mapping:** Handle in Draft Orders Integration phase when writing API calls.
-
-**Sources:**
-- [DraftOrder REST API - asynchronous processing note](https://shopify.dev/docs/api/admin-rest/latest/resources/draftorder)
-
----
-
-### Pitfall 19: Vercel Environment Variables Not Set
-
-**What goes wrong:** Deploy to Vercel, app crashes with "SHOPIFY_API_KEY is not defined". Works locally but not in production.
-
-**Why it happens:** `.env` file is local only (gitignored). Developers forget to configure environment variables in Vercel dashboard.
-
-**Consequences:**
-- Production deployment broken
-- Cannot authenticate with Shopify
-- Cryptic errors for merchants
-- Launch delay
-
-**Prevention:**
-- Set environment variables in Vercel dashboard:
-  - Project Settings → Environment Variables
-  - Add for Production, Preview, Development
-- Required variables for Shopify app:
-  - `SHOPIFY_API_KEY`
-  - `SHOPIFY_API_SECRET`
-  - `SHOPIFY_API_SCOPES`
-  - `DATABASE_URL` (for Prisma)
-  - `HOST` (production app URL)
-- Use `vercel env pull` to sync locally
-- Document required env vars in README
-- Consider using Vercel integration for Shopify (auto-configures vars)
-
-**Detection:**
-- Deploy to Vercel → Check function logs for "undefined" errors
-- Run `vercel env ls` to list configured variables
-- Test production deployment before app submission
-
-**Phase mapping:** Configure in Deployment phase, document in Infrastructure Setup.
-
----
-
-### Pitfall 20: No Idempotency for Duplicate Webhooks
-
-**What goes wrong:** Same webhook delivered twice. App processes order twice, creates duplicate Draft Orders, charges merchant twice.
-
-**Why it happens:** Shopify retries failed webhooks. Network issues can cause duplicate deliveries. Developers don't implement idempotency.
-
-**Consequences:**
-- Duplicate orders
-- Incorrect inventory counts
-- Duplicate charges
-- Merchant complaints and refunds
-
-**Prevention:**
-- Extract unique identifier from webhook payload (e.g., `order_id`, `product_id`)
-- Before processing, check if already processed:
-  ```typescript
-  const existing = await prisma.webhookLog.findUnique({
-    where: { shopifyId: webhook.id }
-  });
-  if (existing) return; // Already processed
-  ```
-- Store webhook ID in database with processed timestamp
-- Make processing logic idempotent (safe to run twice)
-- Shopify mandate: Idempotency required for mutations starting April 2026
-
-**Detection:**
-- Manually send same webhook twice → Check for duplicates
-- Review database for duplicate records with same Shopify ID
-- Monitor webhook logs for same ID processed multiple times
-
-**Phase mapping:** Build into Webhook Handlers from the start (Webhook System phase).
-
-**Sources:**
-- [Webhook best practices - handle duplicates](https://shopify.dev/docs/apps/build/webhooks/best-practices)
-- [API versioning - idempotency requirement](https://shopify.dev/docs/api/usage/versioning)
-
----
-
-## Phase-Specific Warnings
-
-Guidance for which phases are high-risk and need extra attention.
-
-| Phase Topic | Likely Pitfall | Mitigation |
-|-------------|---------------|------------|
-| **App Setup & Authentication** | Third-party cookies (Critical #2), OAuth redirect (Moderate #13) | Use session tokens immediately, test OAuth in production before launch |
-| **Database & Infrastructure** | Prisma connection exhaustion (Critical #4) | Choose connection pooling strategy NOW (Accelerate, Fluid, or pgBouncer) |
-| **Draft Orders Integration** | Rate limits (Critical #5), inventory confusion (Critical #8), async creation (Minor #18) | Implement retry logic, understand inventory behavior, handle 202 responses |
-| **REST API Development** | No HMAC verification (Critical #6), API version drift (Moderate #10) | Design auth with signatures from start, set up version monitoring |
-| **Webhook System** | Missing GDPR webhooks (Critical #3), delivery assumptions (Moderate #9), no idempotency (Minor #20) | Register GDPR webhooks early, build reconciliation jobs, check for duplicates |
-| **Theme/Storefront Integration** | Ghost code on uninstall (Critical #1) | Use Theme App Extensions or npm widget, never inject Liquid |
-| **Billing/Monetization** | Wrong billing API (Critical #7), over-scoped permissions (Moderate #11) | Use Shopify Billing API only, follow least privilege |
-| **Deployment** | Environment variables (Minor #19), OAuth testing (Moderate #13), Vercel-Remix issues (Moderate #12) | Configure Vercel env vars, test full flow on production URL |
-| **Widget Distribution** | npm package vulnerabilities (Moderate #14) | Run npm audit, fix React CVE-2025-55182, use provenance |
-| **UI Development** | Polaris accessibility (Minor #15) | Use Polaris components correctly, test with keyboard and screen reader |
-
----
-
-## Research Confidence Assessment
-
-| Pitfall Category | Confidence Level | Verification Source |
-|------------------|------------------|---------------------|
-| App Store Rejections | **HIGH** | Official Shopify docs ([common rejections](https://shopify.dev/docs/apps/store/review/common-rejections)) + recent Gadget article |
-| Session Tokens | **HIGH** | Official Shopify docs ([session tokens](https://shopify.dev/docs/apps/build/authentication-authorization/session-tokens)) + community issues |
-| GDPR Webhooks | **HIGH** | Official docs ([privacy compliance](https://shopify.dev/docs/apps/build/compliance/privacy-law-compliance)) + multiple community guides |
-| Draft Orders Behavior | **HIGH** | Official API reference ([DraftOrder](https://shopify.dev/docs/api/admin-rest/latest/resources/draftorder)) + community discussions |
-| Vercel Deployment | **MEDIUM** | Prisma official docs + community reports (some issues are environment-specific) |
-| Rate Limits | **HIGH** | Official docs ([API limits](https://shopify.dev/docs/api/usage/limits)) + multiple implementation guides |
-| Webhook Reliability | **HIGH** | Official best practices docs + Hookdeck deep-dive guides |
-| React CVE-2025-55182 | **HIGH** | Official React security advisory (Dec 2025) + security vendor reports |
-| Theme App Extensions | **HIGH** | Official docs ([theme extensions](https://shopify.dev/docs/apps/build/online-store/theme-app-extensions)) + migration guides |
-| Billing API | **HIGH** | Official docs ([billing](https://shopify.dev/docs/apps/launch/billing)) + App Store requirements |
-| API Versioning | **HIGH** | Official versioning docs + 2026-01 release notes |
-| Polaris Accessibility | **MEDIUM** | Polaris documentation + community accessibility guides (WCAG compliance verified) |
-
-**Overall Confidence: HIGH** — All critical pitfalls verified with official Shopify documentation or authoritative sources (Prisma, React, npm). Moderate pitfalls cross-referenced with community reports.
+| Phase | Research Needed | Reason |
+|-------|-----------------|--------|
+| Option Groups Data Model | Schema design patterns for many-to-many with metadata | Complex relationship: products ↔ option groups ↔ choices, need efficient query patterns |
+| Price Calculation Logic | Currency arithmetic libraries comparison | Need to evaluate currency.js vs dinero.js vs big.js vs native integers |
+| REST API Versioning | Remix API versioning patterns | Remix doesn't have built-in versioning, need custom solution |
+| Widget State Management | Optimistic UI patterns for React 18 | May need Zustand or Jotai for complex state with option groups |
+| Performance Optimization | Vercel KV (Redis) setup for rate limiting | Current in-memory rate limiting doesn't work with serverless |
+| App Store Submission | Shopify's latest 2026 review criteria | Requirements change frequently, verify current checklist |
 
 ---
 
 ## Sources
 
-### Official Shopify Documentation
-- [Common app rejections](https://shopify.dev/docs/apps/store/review/common-rejections)
-- [Session tokens](https://shopify.dev/docs/apps/build/authentication-authorization/session-tokens)
-- [Privacy law compliance](https://shopify.dev/docs/apps/build/compliance/privacy-law-compliance)
+### Shopify App Store & Submission
+- [Common app rejections](https://shopify.dev/docs/apps/store/common-rejections)
+- [App Store requirements](https://shopify.dev/docs/apps/launch/shopify-app-store/app-store-requirements)
+- [Checklist of requirements for apps in the Shopify App Store](https://shopify.dev/docs/apps/launch/app-requirements-checklist)
+- [How to pass the Shopify app store review the first time](https://gadget.dev/blog/how-to-pass-the-shopify-app-store-review-the-first-time-part-1-the-technical-bit)
+- [Shopify App Store Approval: Complete Guide](https://eseospace.com/blog/shopify-app-store-approval/)
+
+### Currency & Price Calculations
+- [JavaScript Rounding Errors (in Financial Applications)](https://www.robinwieruch.de/javascript-rounding-errors/)
+- [Handle Money in JavaScript: Financial Precision Without Losing a Cent](https://dev.to/benjamin_renoux/financial-precision-in-javascript-handle-money-without-losing-a-cent-1chc)
+- [Currency Calculations in JavaScript](https://www.honeybadger.io/blog/currency-money-calculations-in-javascript/)
+- [How to Handle Monetary Values in JavaScript](https://frontstuff.io/how-to-handle-monetary-values-in-javascript)
+
+### Database Migrations & Schema Changes
+- [Data migration challenges: Common issues and fixes](https://www.rudderstack.com/blog/data-migration-challenges/)
+- [Safely making database schema changes](https://planetscale.com/blog/safely-making-database-schema-changes)
+- [Schema migrations: pitfalls and risks](https://quesma.com/blog-detail/schema-migrations)
+- [Database Migrations: Safe, Downtime-Free Strategies](https://vadimkravcenko.com/shorts/database-migrations/)
+
+### API Versioning & Backward Compatibility
+- [API Versioning Best Practices for Backward Compatibility](https://endgrate.com/blog/api-versioning-best-practices-for-backward-compatibility)
+- [How to handle versioning and backwards compatibility of APIs](https://www.theplatformpm.com/articles/how-to-handle-versioning-and-backwards-compatibility-of-apis)
+
+### UX & Accessibility
+- [Accessibility best practices for Shopify apps](https://shopify.dev/docs/apps/build/accessibility)
+- [Dropdown UI Design: Anatomy, UX, and Use Cases](https://www.setproduct.com/blog/dropdown-ui-design)
+- [Best Practices for Designing Drop-Down Menu](https://vareweb.com/blog/best-practices-for-designing-drop-down-menu/)
+- [Understanding optimistic UI and React's useOptimistic Hook](https://blog.logrocket.com/understanding-optimistic-ui-react-useoptimistic-hook/)
+
+### Performance
+- [About performance optimization](https://shopify.dev/docs/apps/build/performance)
+- [Shopify App Development: Building High-Performance Extensions](https://speedboostr.com/shopify-app-development-building-high-performance-extensions-in-2025/)
+- [Improve admin performance FAQ](https://community.shopify.dev/t/improve-admin-performance-faq/1100)
+
+### Shopify APIs
 - [DraftOrder REST API](https://shopify.dev/docs/api/admin-rest/latest/resources/draftorder)
-- [Webhook best practices](https://shopify.dev/docs/apps/build/webhooks/best-practices)
-- [API rate limits](https://shopify.dev/docs/api/usage/limits)
-- [API versioning](https://shopify.dev/docs/api/usage/versioning)
-- [Billing for your app](https://shopify.dev/docs/apps/launch/billing)
-- [Theme app extensions](https://shopify.dev/docs/apps/build/online-store/theme-app-extensions)
-- [Access scopes](https://shopify.dev/docs/api/usage/access-scopes)
-
-### Third-Party Technical Sources
-- [Gadget: Pass Shopify app review](https://gadget.dev/blog/how-to-pass-the-shopify-app-store-review-the-first-time-part-1-the-technical-bit)
-- [Prisma: Deploy to Vercel](https://www.prisma.io/docs/orm/prisma-client/deployment/serverless/deploy-to-vercel)
-- [Vercel: Connection pooling](https://vercel.com/kb/guide/connection-pooling-with-functions)
-- [Hookdeck: Shopify webhooks guide](https://hookdeck.com/webhooks/platforms/shopify-webhooks-best-practices-revised-and-extended)
-- [Kirill Platonov: Rate limit strategies](https://kirillplatonov.com/posts/shopify-api-rate-limits/)
-- [React Security Advisory: CVE-2025-55182](https://react.dev/blog/2025/12/03/critical-security-vulnerability-in-react-server-components)
-- [Polaris accessibility](https://polaris-react.shopify.com/foundations/accessibility)
-
-### Community Discussions (Verified)
-- [GDPR webhook setup guide](https://medium.com/@muhammadehsanullah123/how-to-configure-gdpr-compliance-webhooks-in-shopify-public-apps-b2107721a58f)
-- [Session token authentication issues](https://community.shopify.com/t/session-token-authentication-issue-for-built-for-shopify-badge/416552)
-- [Draft Orders limitations](https://community.shopify.dev/t/draft-orders-api-limitations/19710)
-- [Unable to install Remix apps](https://community.shopify.com/t/unable-to-install-new-remix-app-on-production-stores-you-dont-have-this-app-installed/389199)
+- [Draft Order line item limit increase](https://shopify.dev/changelog/draft-order-line-item-limit)
+- [Privacy law compliance](https://shopify.dev/docs/apps/build/compliance/privacy-law-compliance)
 
 ---
 
-## Next Steps
-
-**For Orchestrator/Roadmap Creator:**
-
-1. **Phase 1 (App Foundation)** MUST address:
-   - Critical #2: Session tokens (not cookies)
-   - Critical #4: Prisma connection pooling strategy
-
-2. **Phase 2 (Data Model)** MUST address:
-   - Critical #3: GDPR webhook handlers
-   - Critical #8: Draft Orders inventory understanding
-   - Minor #16: Data retention for draft order history
-
-3. **Phase 3 (Draft Orders)** MUST address:
-   - Critical #5: Rate limit handling with retries
-   - Minor #18: Async creation polling
-
-4. **Phase 4 (REST API)** MUST address:
-   - Critical #6: HMAC request signing
-   - Moderate #11: Minimal scope requests
-
-5. **Before Submission** MUST address:
-   - Critical #1: Theme App Extensions (not script injection)
-   - Critical #7: Shopify Billing API
-   - Moderate #13: Production OAuth testing
-
-**High-risk phases requiring deeper research:**
-- Draft Orders Integration (3 critical pitfalls)
-- Authentication & Authorization (2 critical pitfalls)
-- Infrastructure/Database (connection pooling is make-or-break)
+*Pitfalls research for: QuoteFlow v1.2 (Option Groups & App Store Submission)*
+*Researched: 2026-02-09*
+*Confidence: HIGH*

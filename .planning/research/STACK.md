@@ -1,651 +1,759 @@
-# Technology Stack
+# Stack Additions for Option Groups & App Store Submission
 
-**Project:** Shopify Price Matrix App
-**Researched:** 2026-02-03
-**Overall Confidence:** HIGH
+**Project:** QuoteFlow (Shopify Price Matrix App)
+**Milestone:** v1.2 - Option Groups + App Store Submission
+**Researched:** 2026-02-09
+**Confidence:** HIGH
 
 ## Executive Summary
 
-The Shopify app ecosystem is in transition as of early 2026. Remix has merged with React Router v7, and Polaris React was deprecated in favor of framework-agnostic Polaris Web Components. For a production app in 2026, this creates important architectural decisions around whether to use the legacy Remix template or migrate to the newer React Router approach.
+This milestone adds customizable option groups (dropdown price modifiers like "Material: Wood (+$5)" or "Finish: Matte") and prepares for Shopify App Store submission. The existing v1.1 stack (Remix 2.5, Polaris 12, Prisma 5.8, PostgreSQL) is sufficient with NO framework upgrades required. Additions focus on:
 
-**Critical Decision Required:** The official Shopify Remix template still exists but Shopify now recommends React Router for new projects. However, for this specific project with dual requirements (embedded admin app + standalone React widget), staying with Remix may provide better separation of concerns until React Router patterns stabilize.
+1. **Data model** for option groups and selected values
+2. **Native HTML `<select>` dropdowns** in widget (accessibility best practice)
+3. **App Store compliance** (mandatory GDPR webhooks, billing, privacy policy, GraphQL migration)
 
-## Recommended Stack
+**Critical App Store Requirement:** As of April 1, 2025, new public apps MUST use GraphQL Admin API exclusively. REST Admin API is legacy. Your current app must migrate from REST to GraphQL before submission.
 
-### Core Framework
+## NO Stack Changes Required
 
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| **Remix** | Latest (via `@shopify/shopify-app-remix` 4.1.0) | Embedded admin app framework | Shopify's official template with built-in OAuth, session management, and App Bridge. Despite React Router recommendation for new apps, Remix template remains fully functional and better understood. | HIGH |
-| **Node.js** | 20.x LTS | Runtime environment | Vercel default, LTS until April 2026. Required for Polaris Web Components compatibility (v20+). | HIGH |
-| **TypeScript** | 5.x | Type safety | Industry standard for React/Remix apps, required for component library. | HIGH |
-| **Polaris Web Components** | Latest (CDN) | Admin UI components | Replaces deprecated Polaris React. Framework-agnostic, works with Remix/React. Loaded via CDN: `https://cdn.shopify.com/shopifycloud/polaris.js` | MEDIUM |
+The existing validated stack is production-ready. DO NOT upgrade:
 
-**Critical Notes:**
-- **Polaris React is deprecated** (archived Jan 6, 2026). Do not use `@shopify/polaris` npm package.
-- Remix template still maintained but Shopify encourages React Router for new projects.
-- For this project, Remix provides cleaner separation: admin app (Remix) + widget (standalone React).
+| Already Validated | Current Version | Keep As-Is |
+|-------------------|-----------------|------------|
+| Remix | 2.5.0 | Sufficient for admin CRUD and API routes |
+| React | 18.2.0 | Widget already works, no need for React 19 |
+| Polaris | 12.0.0 | Admin UI component library sufficient |
+| Prisma | 5.8.0 | Schema extension for option groups works |
+| PostgreSQL | Latest (Neon) | JSON fields for option values supported |
+| Vite | 5.0.11 | Widget bundling works |
+| TypeScript | 5.3.3 | Type safety sufficient |
 
-### Database & ORM
+**Rationale:** v1.1 is deployed and working. Feature additions don't require framework upgrades. Minimize risk, ship faster.
 
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| **Prisma ORM** | 7.2.0+ | Database toolkit | Shopify's recommended ORM. Version 7 is Rust-free (90% smaller bundles, 3x faster queries). Official Shopify session storage adapter available. | HIGH |
-| **PostgreSQL** | Latest (via Neon) | Primary database | Industry standard. Neon provides serverless Postgres with Vercel integration (Vercel Postgres transitioned to Neon in Q4 2024). | HIGH |
-| **Neon** | Serverless driver | Postgres hosting | Vercel's recommended Postgres provider. Serverless driver works with Edge Functions. Use pooled connection (`-pooler` hostname). | HIGH |
-| **@shopify/shopify-app-session-storage-prisma** | Latest | Session storage | Official Shopify adapter for storing OAuth sessions in Prisma. 21,689 weekly downloads, actively maintained. | HIGH |
+---
 
-**Configuration Notes:**
-- Use Neon's pooled connection for app (`-pooler` in hostname)
-- Use direct connection for Prisma CLI migrations
-- As of Prisma 5.10.0 + PgBouncer 1.22.0, only pooled connection needed (no `pgbouncer=true` param)
+## Stack Additions for Option Groups
 
-### Deployment & Infrastructure
+### 1. Data Model (Prisma Schema Extension)
 
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| **Vercel** | N/A | Hosting platform | Native Remix support with serverless + edge functions. Auto-detects framework. Node.js 20 default. Zero-config deployment. | HIGH |
-| **Vercel Serverless Functions** | Node.js 20 runtime | API endpoints | Custom REST API endpoints for price lookups. Supports TypeScript, automatic routing from file structure. | HIGH |
+**Purpose:** Store option groups per matrix, selected values in draft orders.
 
-**Deployment Architecture:**
-- Remix app → Vercel Serverless Functions (OAuth, admin routes)
-- Custom REST API → Vercel Serverless Functions (`/api/*` routes)
-- Static assets → Vercel CDN
-- Database → Neon Postgres (serverless, auto-scaling)
+**Required Changes:**
+```prisma
+// Add to existing schema.prisma
 
-### React Component Library (npm Widget)
+model OptionGroup {
+  id          Int               @id @default(autoincrement())
+  matrixId    String            @map("matrix_id")
+  label       String            // "Material", "Finish"
+  position    Int               // Display order
+  required    Boolean           @default(false)
+  createdAt   DateTime          @default(now()) @map("created_at")
+  matrix      PriceMatrix       @relation(fields: [matrixId], references: [id], onDelete: Cascade)
+  options     OptionValue[]
 
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| **React** | 19.x | UI library for widget | Latest stable. Polaris Web Components compatible with React 19 (framework-agnostic). Widget targets headless storefronts. | HIGH |
-| **Vite** | 7.x | Build tool | Modern, fast. Library mode for bundling React components. Better DX than Rollup alone. `vite-plugin-lib-inject-css` for CSS handling. | HIGH |
-| **vite-plugin-lib-inject-css** | Latest | CSS injection | Solves Vite's CSS module problem - auto-generates import statements for CSS in bundle. Zero config. | MEDIUM |
-| **vite-plugin-externalize-deps** | Latest | Dependency externalization | Prevents bundling React/ReactDOM. Essential for library mode to avoid duplicate React instances. | MEDIUM |
-| **tsup** (alternative) | Latest | TypeScript bundler | Simpler alternative to Vite for pure TS libraries. Esbuild-powered, zero-config. Consider if widget has no special build requirements. | MEDIUM |
+  @@unique([matrixId, position])
+  @@index([matrixId])
+  @@map("option_groups")
+}
 
-**Why Vite over tsup/Rollup:**
-- **Vite:** Best for component libraries needing visual development (Storybook integration, HMR). Uses Rollup internally for production builds.
-- **tsup:** Better for simple utility libraries without visual development needs.
-- **Rollup alone:** Too complex, Vite provides better DX.
+model OptionValue {
+  id            Int          @id @default(autoincrement())
+  optionGroupId Int          @map("option_group_id")
+  label         String       // "Wood", "Matte"
+  priceModifier Float        @map("price_modifier")  // +5.00, -2.50, or 0
+  position      Int          // Display order within group
+  optionGroup   OptionGroup  @relation(fields: [optionGroupId], references: [id], onDelete: Cascade)
 
-**Library Structure:**
-```
-packages/
-  widget/              # React component library
-    src/
-      components/
-      index.ts
-    package.json       # Published to npm
-    vite.config.ts     # Library mode
-  app/                 # Remix admin app
-    app/
-    public/
-    package.json
+  @@unique([optionGroupId, position])
+  @@index([optionGroupId])
+  @@map("option_values")
+}
+
+// Extend DraftOrderRecord to store selected options
+model DraftOrderRecord {
+  // ... existing fields ...
+  selectedOptions Json?        @map("selected_options")  // { "Material": "Wood (+$5)", "Finish": "Matte" }
+  // Store as JSON for flexibility: [{ groupLabel: "Material", valueLabel: "Wood", modifier: 5.00 }]
+}
 ```
 
-### Shopify Integration
+**Why Prisma JSON field:**
+- PostgreSQL supports JSON natively with efficient indexing
+- Selected options vary per order, not normalized relations
+- Prisma JSON querying: `where: { selectedOptions: { path: ['Material'], equals: 'Wood' } }`
+- Validated with Zod at runtime before insert
 
-| Technology | Version | Purpose | Why | Confidence |
-|------------|---------|---------|-----|------------|
-| **@shopify/shopify-app-remix** | 4.1.0+ | Shopify app framework | Official package for OAuth, session management, GraphQL client, webhooks. Despite React Router recommendation, still actively maintained. | HIGH |
-| **@shopify/app-bridge** | Latest (CDN) | Embedded app SDK | Required for embedded admin apps. Loaded via CDN: `https://cdn.shopify.com/shopifycloud/app-bridge.js` | HIGH |
-| **Shopify GraphQL Admin API** | 2026-01 | Store data access | For managing app data, Draft Orders, products. REST API is legacy (deprecated Oct 2024), use GraphQL exclusively. | HIGH |
-
-**Authentication Strategy:**
-- **Admin app:** OAuth 2.0 via `@shopify/shopify-app-remix` (per-store access tokens)
-- **REST API for storefronts:** Custom API keys stored in database (per-store)
-  - Generate on install, store in Prisma DB
-  - Validate in API middleware
-  - NOT Shopify's access tokens (those are for admin API only)
-
-**Draft Orders API:**
-- Use `draftOrderCreate` mutation with `lineItem.priceOverride` for custom prices
-- Prices lock on creation (basis for tax, discount calculations)
-- As of 2025-01 API version, custom prices fully supported
-
-### Supporting Libraries
-
-| Library | Version | Purpose | When to Use | Confidence |
-|---------|---------|---------|-------------|------------|
-| **zod** | Latest | Runtime validation | Validate API requests, env vars, form data. TypeScript-first schema validation. | HIGH |
-| **dotenv** | Latest | Environment variables | Development only. Vercel uses native env vars in production. | HIGH |
-| **@remix-run/node** | Latest | Server utilities | Headers, redirects, JSON responses in Remix loaders/actions. | HIGH |
-| **@remix-run/react** | Latest | React utilities | Remix routing hooks, form components. | HIGH |
-
-## Alternatives Considered
-
-| Category | Recommended | Alternative | Why Not | Confidence |
-|----------|-------------|-------------|---------|------------|
-| **Framework** | Remix (via Shopify template) | React Router v7 (new Shopify recommendation) | React Router is future direction but Remix template more mature. Migration path exists. For dual architecture (admin + widget), Remix cleaner. | MEDIUM |
-| **Framework** | Remix | Next.js + Shopify template | Next.js templates exist but Remix is Shopify's official choice. Next.js requires more custom OAuth setup. | HIGH |
-| **UI Components** | Polaris Web Components | Polaris React | Polaris React deprecated Jan 2026. Web Components are framework-agnostic and actively maintained. | HIGH |
-| **ORM** | Prisma | Raw SQL / Drizzle | Prisma has official Shopify adapters, excellent DX, and version 7 is performant. Drizzle lighter but less Shopify integration. | MEDIUM |
-| **Database** | Neon Postgres | Vercel Postgres / Railway / Supabase | Vercel transitioned to Neon (Q4 2024). Native Vercel integration, serverless, generous free tier. | MEDIUM |
-| **Deployment** | Vercel | Cloudflare Workers / Railway / Fly.io | Vercel has best Remix support, zero config. Cloudflare Workers require adapter, more complex for Remix. | HIGH |
-| **Component Bundler** | Vite | Rollup alone | Vite provides better DX with HMR, Storybook integration. Uses Rollup internally for production builds. | MEDIUM |
-| **Component Bundler** | Vite | tsup | Vite better for visual component development. tsup better for pure utility libraries. | MEDIUM |
-| **Bundler for npm** | Vite library mode | Webpack | Webpack too complex for library bundling. Vite/Rollup designed for libraries. | HIGH |
-
-## What NOT to Use
-
-| Technology | Why Avoid | Instead Use |
-|------------|-----------|-------------|
-| **@shopify/polaris (npm)** | Deprecated Jan 2026, archived repository. No React 19 support. | Polaris Web Components (CDN) |
-| **Polaris React components** | Entire React library deprecated. | Web Components with JSX wrappers if needed |
-| **Shopify REST Admin API** | Legacy as of Oct 2024. New public apps must use GraphQL (as of April 2025). | GraphQL Admin API |
-| **Custom apps via Shopify Admin** | Disabled Jan 1, 2026. | Apps via Shopify CLI or Dev Dashboard only |
-| **Vercel Postgres direct** | Transitioned to Neon partnership. | Neon (via Vercel integration) |
-| **Node.js 18 or lower** | Polaris v13 requires Node 20+. Node 18 support ends April 2025. | Node.js 20 LTS |
-| **Remix with custom OAuth** | Shopify template handles OAuth. Don't reinvent. | @shopify/shopify-app-remix |
-
-## Monorepo Structure (Recommended)
-
-For this project with both admin app and npm widget:
-
-```
-pricing-app/
-├── packages/
-│   ├── widget/                    # Published to npm
-│   │   ├── src/
-│   │   │   ├── components/
-│   │   │   │   ├── PriceMatrix.tsx
-│   │   │   │   └── DimensionInput.tsx
-│   │   │   ├── index.ts
-│   │   │   └── types.ts
-│   │   ├── package.json           # "@your-org/shopify-price-widget"
-│   │   ├── vite.config.ts         # Library mode config
-│   │   └── tsconfig.json
-│   └── app/                       # Remix admin app
-│       ├── app/
-│       │   ├── routes/
-│       │   │   ├── app._index.tsx      # Dashboard
-│       │   │   ├── api.price.ts        # REST endpoint
-│       │   │   └── webhooks.tsx
-│       │   ├── models/
-│       │   │   └── matrix.server.ts
-│       │   └── root.tsx
-│       ├── prisma/
-│       │   └── schema.prisma
-│       ├── public/
-│       ├── package.json
-│       └── vercel.json             # If needed (usually auto-detected)
-├── package.json                    # Root package.json (workspaces)
-├── pnpm-workspace.yaml             # or package.json workspaces
-└── tsconfig.json                   # Shared config
-
-```
-
-**Workspace Manager:** Use **pnpm** (recommended) or npm workspaces. pnpm faster, better monorepo support.
-
-## Installation
-
-### Initial Setup (Shopify Remix App)
-
+**Migration:**
 ```bash
-# Using Shopify CLI (recommended)
-npm init @shopify/app@latest
-# Select: Remix > TypeScript
-
-cd your-app-name
-npm install
-
-# Add Prisma
-npm install prisma @prisma/client @shopify/shopify-app-session-storage-prisma
-npx prisma init
-
-# Add additional dependencies
-npm install zod
-npm install -D @types/node
-```
-
-### Prisma Setup
-
-```bash
-# Configure DATABASE_URL in .env
-echo "DATABASE_URL=postgresql://user:pass@host/db?sslmode=require" > .env
-
-# Update schema.prisma with Session model (required for Shopify)
-# See @shopify/shopify-app-session-storage-prisma docs for schema
-
-# Run migrations
-npx prisma migrate dev --name init
+npx prisma migrate dev --name add_option_groups
 npx prisma generate
 ```
 
-### Widget Package (Separate)
+**Confidence:** HIGH (Prisma 5.8 supports JSON fields, PostgreSQL native JSON proven)
 
-```bash
-mkdir -p packages/widget
-cd packages/widget
+**Sources:**
+- [Prisma JSON Fields Documentation](https://www.prisma.io/docs/orm/prisma-client/special-fields-and-types/working-with-json-fields)
+- [PostgreSQL JSON Functions](https://www.postgresql.org/docs/current/functions-json.html)
 
-# Initialize package
-npm init -y
+---
 
-# Install dependencies
-npm install react react-dom
-npm install -D vite @vitejs/plugin-react typescript @types/react @types/react-dom
-npm install -D vite-plugin-lib-inject-css vite-plugin-externalize-deps
+### 2. Widget Dropdown Rendering
 
-# Configure vite.config.ts for library mode (see below)
+**Component:** Native HTML `<select>` (NOT custom React dropdown)
+
+**Why native `<select>`:**
+- Screen reader accessible by default (WCAG compliance)
+- Keyboard navigation built-in (Tab, Space, Arrow keys)
+- Mobile-optimized pickers (iOS wheel, Android native UI)
+- Zero JavaScript required for accessibility
+- New CSS `appearance: base-select;` allows full styling (Chrome 115+, Safari TP, Firefox review)
+
+**Implementation:**
+```tsx
+// packages/widget/src/components/OptionGroupSelector.tsx
+interface OptionGroupSelectorProps {
+  label: string;
+  required: boolean;
+  options: Array<{ id: number; label: string; priceModifier: number }>;
+  value: number | null;
+  onChange: (optionValueId: number) => void;
+}
+
+export function OptionGroupSelector({
+  label,
+  required,
+  options,
+  value,
+  onChange,
+}: OptionGroupSelectorProps) {
+  return (
+    <div className="pm-option-group">
+      <label htmlFor={`option-${label}`} className="pm-option-label">
+        {label} {required && <span className="pm-required">*</span>}
+      </label>
+      <select
+        id={`option-${label}`}
+        className="pm-option-select"
+        value={value ?? ''}
+        onChange={(e) => onChange(Number(e.target.value))}
+        required={required}
+      >
+        <option value="" disabled>
+          Select {label.toLowerCase()}
+        </option>
+        {options.map((opt) => (
+          <option key={opt.id} value={opt.id}>
+            {opt.label}
+            {opt.priceModifier !== 0 &&
+              ` (${opt.priceModifier > 0 ? '+' : ''}$${opt.priceModifier.toFixed(2)})`}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
 ```
 
-### Vercel Deployment
+**NO new dependencies:** Native HTML element, React event handling only.
 
-```bash
-# Install Vercel CLI
-npm i -g vercel
+**Alternative Considered:** Headless UI `<Listbox>` or custom React dropdown.
 
-# Login
-vercel login
+**Why NOT:**
+- Accessibility complexity (ARIA roles, focus management, keyboard nav)
+- Mobile incompatibility (custom dropdowns break iOS/Android native pickers)
+- Zero benefit for simple price modifier selection
+- "Precisely 0 good reasons to redesign the select popup options" (24 Accessibility, 2019)
 
-# Deploy (from app directory)
-cd packages/app
-vercel
+**Styling:** CSS within Shadow DOM (existing `widgetStyles`), optional `appearance: base-select;` for modern browsers.
 
-# Set environment variables in Vercel dashboard:
-# - DATABASE_URL (Neon connection string with -pooler)
-# - SHOPIFY_API_KEY
-# - SHOPIFY_API_SECRET
-# - SHOPIFY_SCOPES
-# - SHOPIFY_APP_URL
-```
+**Confidence:** HIGH (Native `<select>` accessibility best practice, no external dependencies)
 
-### Vite Library Config Example
+**Sources:**
+- [Select Dropdown Accessibility Checklist](https://www.atomica11y.com/accessible-design/select/)
+- [Customizable Native Selects (CSS)](https://medium.com/@karstenbiedermann/customizable-native-selects-a-css-game-changer-for-development-design-c3bbec014f44)
+- [WebAXE: Accessible Custom Select Dropdowns](https://www.webaxe.org/accessible-custom-select-dropdowns/)
 
+---
+
+### 3. Price Calculation Enhancement
+
+**Logic:** Sum base matrix price + selected option modifiers.
+
+**Implementation:**
 ```typescript
-// packages/widget/vite.config.ts
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import { libInjectCss } from 'vite-plugin-lib-inject-css';
-import { externalizeDeps } from 'vite-plugin-externalize-deps';
+// app/routes/api.v1.price.tsx (existing endpoint, extend)
+export async function loader({ request }: LoaderFunctionArgs) {
+  // ... existing width/height validation ...
 
-export default defineConfig({
-  plugins: [
-    react(),
-    libInjectCss(),
-    externalizeDeps(), // Externalizes all deps from package.json
-  ],
-  build: {
-    lib: {
-      entry: './src/index.ts',
-      name: 'ShopifyPriceWidget',
-      formats: ['es', 'cjs'],
-      fileName: (format) => `index.${format === 'es' ? 'mjs' : 'cjs'}`,
-    },
-    rollupOptions: {
-      external: ['react', 'react-dom', 'react/jsx-runtime'],
-      output: {
-        globals: {
-          react: 'React',
-          'react-dom': 'ReactDOM',
-        },
-      },
-    },
-  },
+  // Parse selected options from query params
+  // ?width=100&height=50&options[Material]=1&options[Finish]=2
+  const url = new URL(request.url);
+  const selectedOptionIds = Object.values(
+    Object.fromEntries(
+      [...url.searchParams.entries()].filter(([key]) => key.startsWith('options['))
+    )
+  ).map(Number);
+
+  // Fetch base price from matrix
+  const basePrice = calculateMatrixPrice(width, height, matrix);
+
+  // Fetch option values and sum modifiers
+  const optionValues = await prisma.optionValue.findMany({
+    where: { id: { in: selectedOptionIds } },
+    include: { optionGroup: true },
+  });
+
+  const totalModifier = optionValues.reduce((sum, opt) => sum + opt.priceModifier, 0);
+  const finalPrice = basePrice + totalModifier;
+
+  return json({
+    basePrice,
+    optionModifier: totalModifier,
+    finalPrice,
+    currency: store.currency,
+    unit: store.unitPreference,
+  });
+}
+```
+
+**Validation (Zod):**
+```typescript
+import { z } from 'zod';
+
+const OptionSelectionSchema = z.object({
+  width: z.coerce.number().positive(),
+  height: z.coerce.number().positive(),
+  quantity: z.coerce.number().int().positive().default(1),
+  selectedOptions: z.record(z.string(), z.coerce.number().int()).optional(),
 });
 ```
 
-## Environment Variables
+**Widget Price Fetching:**
+- Extend `usePriceFetch` hook to include `selectedOptions` state
+- Debounce API calls when options change (existing `use-debounce@10.0.0` works)
+- Display: "Base: $50 + Options: $5 = Total: $55"
 
-### Development (.env)
+**NO new dependencies:** Logic uses existing Zod (already in package.json), Prisma queries.
 
-```bash
-# Shopify App
-SHOPIFY_API_KEY=your_api_key
-SHOPIFY_API_SECRET=your_api_secret
-SHOPIFY_SCOPES=read_products,write_draft_orders
-SHOPIFY_APP_URL=https://your-app.ngrok.io
+**Confidence:** HIGH (Extension of existing price calculation, no new APIs)
 
-# Database (Neon)
-DATABASE_URL=postgresql://user:pass@ep-xyz-pooler.region.neon.tech/dbname?sslmode=require
-DIRECT_URL=postgresql://user:pass@ep-xyz.region.neon.tech/dbname?sslmode=require
+---
 
-# Optional
-NODE_ENV=development
-```
+## Stack Additions for App Store Submission
 
-### Production (Vercel Environment Variables)
+### 4. GraphQL Admin API Migration (MANDATORY)
 
-Set in Vercel dashboard under Project Settings > Environment Variables:
-- `SHOPIFY_API_KEY`
-- `SHOPIFY_API_SECRET`
-- `SHOPIFY_SCOPES`
-- `SHOPIFY_APP_URL` (auto-populated via Vercel URL)
-- `DATABASE_URL` (Neon pooled connection)
-- `DIRECT_URL` (Neon direct connection, for migrations)
+**Current State:** App uses REST Admin API for Draft Orders, Products.
 
-## Critical Configuration Notes
+**Required Change:** Migrate to GraphQL Admin API.
 
-### 1. Polaris Web Components Setup (Remix)
+**Why Mandatory:**
+- REST Admin API marked legacy (October 2024)
+- As of April 1, 2025, new public apps MUST use GraphQL exclusively
+- App Store submission rejected if REST API detected
 
-**app/root.tsx:**
-```tsx
-import { Links, LiveReload, Meta, Outlet, Scripts, ScrollRestoration } from "@remix-run/react";
+**Implementation:**
 
-export default function App() {
-  return (
-    <html>
-      <head>
-        <Meta />
-        <Links />
-        {/* App Bridge - MUST load before Polaris */}
-        <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js" />
-        {/* Polaris Web Components */}
-        <script src="https://cdn.shopify.com/shopifycloud/polaris.js" />
-      </head>
-      <body>
-        <Outlet />
-        <ScrollRestoration />
-        <Scripts />
-        <LiveReload />
-      </body>
-    </html>
+Use existing `@shopify/shopify-app-remix@2.7.0` GraphQL client:
+
+```typescript
+// app/shopify.server.ts (existing file, ensure GraphQL client configured)
+import { shopifyApp } from '@shopify/shopify-app-remix/server';
+import { restResources } from '@shopify/shopify-api/rest/admin/2024-01';
+
+export const shopify = shopifyApp({
+  // ... existing OAuth config ...
+  restResources,  // REMOVE this line after migration
+});
+
+// app/routes/app.draft-order.tsx (migrate from REST to GraphQL)
+export async function action({ request }: ActionFunctionArgs) {
+  const { admin, session } = await authenticate.admin(request);
+
+  // OLD (REST): admin.rest.resources.DraftOrder.create(...)
+  // NEW (GraphQL):
+  const response = await admin.graphql(
+    `#graphql
+      mutation draftOrderCreate($input: DraftOrderInput!) {
+        draftOrderCreate(input: $input) {
+          draftOrder {
+            id
+            invoiceUrl
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `,
+    {
+      variables: {
+        input: {
+          lineItems: [
+            {
+              title: productTitle,
+              quantity: quantity,
+              originalUnitPrice: calculatedPrice,
+              customAttributes: [
+                { key: 'width', value: String(width) },
+                { key: 'height', value: String(height) },
+                // Add selected options as custom attributes
+                ...Object.entries(selectedOptions).map(([key, val]) => ({
+                  key: `option_${key}`,
+                  value: val,
+                })),
+              ],
+            },
+          ],
+        },
+      },
+    }
   );
+
+  const data = await response.json();
+  if (data.data.draftOrderCreate.userErrors.length > 0) {
+    throw new Error(data.data.draftOrderCreate.userErrors[0].message);
+  }
+
+  return json({ checkoutUrl: data.data.draftOrderCreate.draftOrder.invoiceUrl });
 }
 ```
 
-**Using Polaris components in Remix:**
-```tsx
-// Use as JSX (React 18+ compatibility)
-export default function Dashboard() {
-  return (
-    <ui-page>
-      <ui-layout>
-        <ui-layout-section>
-          <ui-card>
-            <ui-text variant="headingMd">Price Matrix</ui-text>
-          </ui-card>
-        </ui-layout-section>
-      </ui-layout>
-    </ui-page>
-  );
-}
+**Migration Scope:**
+- Draft Order creation (REST → `draftOrderCreate` mutation)
+- Product fetching for ProductPicker (REST → `products` query)
+- Webhook registration (if using REST, migrate to GraphQL)
+
+**NO new dependencies:** `@shopify/shopify-app-remix@2.7.0` includes GraphQL client.
+
+**Confidence:** HIGH (Shopify's official client, mandatory requirement, well-documented)
+
+**Sources:**
+- [Shopify GraphQL Admin API Changelog (April 2025 requirement)](https://shopify.dev/changelog/starting-april-2025-new-public-apps-submitted-to-shopify-app-store-must-use-graphql)
+- [Draft Order GraphQL Mutation](https://shopify.dev/docs/api/admin-graphql/latest/mutations/draftOrderCreate)
+- [GraphQL vs REST Migration Guide](https://shopify.dev/docs/apps/build/graphql/migrate)
+
+---
+
+### 5. Mandatory GDPR Webhooks
+
+**Requirement:** All App Store apps MUST implement 3 GDPR compliance webhooks.
+
+**Current State:** Check `app/routes/webhooks.tsx` for existing webhook handlers.
+
+**Required Webhooks:**
+
+1. **`customers/data_request`** — Merchant requests customer data
+2. **`customers/redact`** — Delete customer data (48 hours to comply)
+3. **`shop/redact`** — Delete shop data after uninstall (48 hours)
+
+**Implementation:**
+```typescript
+// app/routes/webhooks.tsx (extend existing file)
+import { authenticate } from '~/shopify.server';
+import type { ActionFunctionArgs } from '@remix-run/node';
+
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const { topic, shop, payload } = await authenticate.webhook(request);
+
+  switch (topic) {
+    case 'CUSTOMERS_DATA_REQUEST':
+      // Query database for customer data
+      const customerData = await prisma.draftOrderRecord.findMany({
+        where: {
+          storeId: shop,
+          // Match customer ID from payload
+        },
+      });
+      // Send data to merchant via email or Shopify API
+      console.log('Customer data request:', customerData);
+      break;
+
+    case 'CUSTOMERS_REDACT':
+      // Delete or anonymize customer data
+      await prisma.draftOrderRecord.updateMany({
+        where: {
+          storeId: shop,
+          // Match customer ID from payload
+        },
+        data: {
+          // Anonymize or delete PII
+          // Store GdprRequest record for audit trail
+        },
+      });
+      break;
+
+    case 'SHOP_REDACT':
+      // Delete all shop data (uninstall cleanup)
+      await prisma.store.delete({ where: { shop } });
+      await prisma.priceMatrix.deleteMany({ where: { storeId: shop } });
+      await prisma.draftOrderRecord.deleteMany({ where: { storeId: shop } });
+      break;
+
+    case 'APP_UNINSTALLED':
+      // Cleanup session, mark for shop/redact
+      await prisma.store.update({
+        where: { shop },
+        data: { uninstalledAt: new Date() },
+      });
+      break;
+
+    default:
+      throw new Response('Unhandled webhook topic', { status: 404 });
+  }
+
+  return new Response('Webhook processed', { status: 200 });
+};
 ```
 
-**Remix router integration:**
-```tsx
-// Handle Polaris navigation with Remix router
-import { useNavigate } from "@remix-run/react";
-
-useEffect(() => {
-  const handleNavigate = (event: CustomEvent) => {
-    const navigate = useNavigate();
-    navigate(event.detail.url);
-  };
-
-  window.addEventListener('shopify:navigate', handleNavigate as EventListener);
-
-  return () => {
-    window.removeEventListener('shopify:navigate', handleNavigate as EventListener);
-  };
-}, []);
-```
-
-### 2. Prisma Session Storage Schema
-
-**prisma/schema.prisma:**
+**Extend Prisma Schema:**
 ```prisma
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL") // For migrations
-}
-
-generator client {
-  provider = "prisma-client-js"
-}
-
-model Session {
-  id          String    @id
+model GdprRequest {
+  id          Int              @id @default(autoincrement())
   shop        String
-  state       String
-  isOnline    Boolean   @default(false)
-  scope       String?
-  expires     DateTime?
-  accessToken String    @db.Text
-  userId      BigInt?
-  firstName   String?
-  lastName    String?
-  email       String?
-  accountOwner Boolean  @default(false)
-  locale      String?
-  collaborator Boolean? @default(false)
-  emailVerified Boolean? @default(false)
-}
-
-model Store {
-  id        String   @id @default(cuid())
-  shop      String   @unique
-  apiKey    String   @unique @default(cuid()) // For REST API auth
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model PriceMatrix {
-  id          String   @id @default(cuid())
-  shop        String
-  name        String
-  minWidth    Float
-  maxWidth    Float
-  minHeight   Float
-  maxHeight   Float
-  pricePerUnit Float
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  type        GdprRequestType  // enum: DATA_REQUEST, CUSTOMERS_REDACT, SHOP_REDACT
+  payload     Json
+  processedAt DateTime?        @map("processed_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
 
   @@index([shop])
+  @@index([type])
+  @@map("gdpr_requests")
+}
+
+enum GdprRequestType {
+  CUSTOMERS_DATA_REQUEST
+  CUSTOMERS_REDACT
+  SHOP_REDACT
+
+  @@map("gdpr_request_type")
 }
 ```
 
-### 3. Custom REST API for Storefronts
+**Webhook Registration:**
+Configure in `shopify.app.toml`:
+```toml
+[webhooks]
+api_version = "2026-01"
 
-**app/routes/api.price.ts:**
+[[webhooks.subscriptions]]
+topics = ["customers/data_request", "customers/redact", "shop/redact", "app/uninstalled"]
+uri = "/webhooks"
+```
+
+**Testing:**
+```bash
+# Trigger test webhooks via Shopify CLI
+shopify app webhook trigger --topic customers/data_request
+shopify app webhook trigger --topic customers/redact
+shopify app webhook trigger --topic shop/redact
+```
+
+**NO new dependencies:** Webhook handling built into `@shopify/shopify-app-remix`.
+
+**Confidence:** HIGH (Mandatory requirement, official Shopify implementation)
+
+**Sources:**
+- [Shopify Privacy Law Compliance](https://shopify.dev/docs/apps/build/compliance/privacy-law-compliance)
+- [GDPR Webhook Implementation Guide](https://medium.com/@muhammadehsanullah123/how-to-configure-gdpr-compliance-webhooks-in-shopify-public-apps-b2107721a58f)
+- [App Requirements Checklist](https://shopify.dev/docs/apps/launch/app-requirements-checklist)
+
+---
+
+### 6. Billing Implementation (If Charging Merchants)
+
+**Current State:** Free app (no billing).
+
+**If adding paid plans:** MUST use Shopify Billing API or Managed Pricing.
+
+**Two Options:**
+
+#### Option A: Managed Pricing (Recommended for Simple Plans)
+- Configure plans in Partner Dashboard
+- Shopify hosts plan selection page
+- Automatic trial, proration, charge history
+- NO code required for billing UI
+- Supports: Free, monthly, annual recurring plans
+- Does NOT support: Usage-based, one-time charges
+
+**Setup:**
+1. Partner Dashboard → Apps → [Your App] → Pricing
+2. Add plans: Free, Basic ($9.99/mo), Pro ($29.99/mo)
+3. Enable in `shopify.app.toml`:
+```toml
+[billing]
+managed_pricing_enabled = true
+```
+
+#### Option B: Billing API (For Custom Plans)
 ```typescript
-import { json } from "@remix-run/node";
-import type { LoaderFunctionArgs } from "@remix-run/node";
-import { prisma } from "~/db.server";
+// app/routes/app.billing.tsx
+export async function action({ request }: ActionFunctionArgs) {
+  const { billing, session } = await authenticate.admin(request);
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  const url = new URL(request.url);
-  const apiKey = request.headers.get("X-API-Key");
-  const width = url.searchParams.get("width");
-  const height = url.searchParams.get("height");
-
-  // Validate API key
-  const store = await prisma.store.findUnique({
-    where: { apiKey: apiKey || "" },
+  const billingCheck = await billing.require({
+    plans: [BASIC_PLAN, PRO_PLAN],
+    onFailure: async () => billing.request({
+      plan: BASIC_PLAN,
+      isTest: true, // Remove in production
+    }),
   });
 
-  if (!store) {
-    return json({ error: "Invalid API key" }, { status: 401 });
+  if (billingCheck.appSubscriptions.length > 0) {
+    return json({ plan: billingCheck.appSubscriptions[0].name });
   }
 
-  // Find matching matrix
-  const matrix = await prisma.priceMatrix.findFirst({
-    where: {
-      shop: store.shop,
-      minWidth: { lte: Number(width) },
-      maxWidth: { gte: Number(width) },
-      minHeight: { lte: Number(height) },
-      maxHeight: { gte: Number(height) },
-    },
-  });
-
-  if (!matrix) {
-    return json({ error: "No price found for dimensions" }, { status: 404 });
-  }
-
-  const totalPrice = matrix.pricePerUnit * Number(width) * Number(height);
-
-  return json({
-    price: totalPrice,
-    currency: "USD",
-    matrix: matrix.name,
-  });
+  return redirect(await billing.request({ plan: BASIC_PLAN }));
 }
 ```
 
-### 4. Widget npm Package.json
+**Decision:**
+- **Free app:** No changes required
+- **Fixed pricing ($X/month):** Use Managed Pricing
+- **Usage-based (price per matrix):** Use Billing API
 
-**packages/widget/package.json:**
-```json
-{
-  "name": "@your-org/shopify-price-widget",
-  "version": "1.0.0",
-  "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
-    },
-    "./style.css": "./dist/style.css"
-  },
-  "files": [
-    "dist"
-  ],
-  "scripts": {
-    "build": "vite build && tsc --emitDeclarationOnly",
-    "dev": "vite"
-  },
-  "peerDependencies": {
-    "react": "^18.0.0 || ^19.0.0",
-    "react-dom": "^18.0.0 || ^19.0.0"
-  },
-  "devDependencies": {
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "@vitejs/plugin-react": "^4.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "typescript": "^5.0.0",
-    "vite": "^7.0.0",
-    "vite-plugin-lib-inject-css": "^2.0.0",
-    "vite-plugin-externalize-deps": "^0.8.0"
-  }
+**NO new dependencies:** Billing built into `@shopify/shopify-app-remix`.
+
+**Confidence:** HIGH (Optional feature, official Shopify implementation)
+
+**Sources:**
+- [Managed Pricing Documentation](https://shopify.dev/docs/apps/launch/billing/managed-pricing)
+- [Billing API Guide](https://shopify.dev/docs/apps/launch/billing)
+
+---
+
+### 7. Privacy Policy (MANDATORY)
+
+**Requirement:** Public app listing MUST include privacy policy URL.
+
+**Content Requirements:**
+- What data collected from merchants/customers
+- How data used, stored, shared
+- Third-party services (Vercel, Neon, analytics if any)
+- Data retention policy
+- GDPR/CCPA compliance (rights to access, delete)
+- Contact info for data requests
+
+**Implementation Options:**
+
+#### Option A: Use Shopify's Generator (Quickest)
+- https://www.shopify.com/tools/policy-generator
+- Select "App Developer" category
+- Download and host on public URL
+
+#### Option B: Professional Service
+- Termly.io, TermsFeed.com (auto-generated)
+- Legal review recommended for complex data handling
+
+**Hosting:**
+- Option 1: Static page on app domain (`/privacy-policy`)
+- Option 2: External site (GitHub Pages, Notion public page)
+- Option 3: Partner Dashboard documentation section
+
+**Link in App Listing:**
+- Partner Dashboard → Apps → [Your App] → App listing
+- Required field: "Privacy policy URL"
+
+**NO code dependencies:** Static HTML or external service.
+
+**Confidence:** HIGH (Required by Shopify, standard templates available)
+
+**Sources:**
+- [Shopify Privacy Requirements](https://shopify.dev/docs/apps/launch/privacy-requirements)
+- [Shopify Policy Generator](https://www.shopify.com/tools/policy-generator)
+
+---
+
+### 8. Performance Requirements
+
+**Requirement:** App must NOT reduce Lighthouse scores by more than 10 points.
+
+**Testing Criteria:**
+- Home page: 17% weight
+- Product page: 40% weight
+- Collection page: 43% weight
+
+**Implementation:**
+
+#### Admin App (Embedded)
+- Already using Polaris 12 (lightweight)
+- Lazy load routes with Remix code splitting
+- Monitor bundle size: `npm run build` → check `build/` directory
+
+```typescript
+// app/routes/app._index.tsx (dashboard, lazy load heavy components)
+const MatrixGrid = lazy(() => import('~/components/MatrixGrid'));
+
+export default function Dashboard() {
+  return (
+    <Suspense fallback={<Spinner />}>
+      <MatrixGrid />
+    </Suspense>
+  );
 }
 ```
 
-## TypeScript Configuration
+#### Widget (Storefront)
+- Current bundle: Already optimized (Shadow DOM, minimal deps)
+- Ensure widget bundle < 50KB gzipped
+- Check: `npm run build` in `packages/widget/`, inspect `dist/` size
 
-### Remix App (packages/app/tsconfig.json)
-
-```json
-{
-  "include": ["**/*.ts", "**/*.tsx"],
-  "compilerOptions": {
-    "lib": ["DOM", "DOM.Iterable", "ES2022"],
-    "isolatedModules": true,
-    "esModuleInterop": true,
-    "jsx": "react-jsx",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "resolveJsonModule": true,
-    "target": "ES2022",
-    "strict": true,
-    "allowJs": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "baseUrl": ".",
-    "paths": {
-      "~/*": ["./app/*"]
-    },
-    "noEmit": true
-  }
-}
+**Monitoring:**
+```bash
+# Run Lighthouse on test store after installation
+lighthouse https://test-store.myshopify.com/products/test-product --view
 ```
 
-### Widget (packages/widget/tsconfig.json)
+**NO new dependencies:** Use existing Remix code splitting, Vite bundle analysis.
 
-```json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
+**Confidence:** MEDIUM (Need to test with Shopify's review process, but current stack lightweight)
 
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
+**Sources:**
+- [Shopify App Store Requirements (Performance)](https://shopify.dev/docs/apps/launch/app-requirements-checklist)
+- [Lighthouse Performance Guide](https://developer.chrome.com/docs/lighthouse/performance/)
 
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
+---
 
-    "declaration": true,
-    "declarationDir": "./dist",
-    "emitDeclarationOnly": false
-  },
-  "include": ["src"]
-}
+## Installation Commands
+
+### Option Groups Schema Migration
+```bash
+# Add option groups schema to prisma/schema.prisma
+npx prisma migrate dev --name add_option_groups
+npx prisma generate
+
+# Verify migration
+npx prisma studio  # Check OptionGroup, OptionValue tables exist
 ```
 
-## Version Matrix (Quick Reference)
+### GDPR Webhooks Setup
+```bash
+# Update shopify.app.toml with webhook topics
+# Deploy to Vercel
+vercel --prod
 
-| Technology | Minimum | Recommended | Latest Verified |
-|------------|---------|-------------|-----------------|
-| Node.js | 20.0.0 | 20.11.1 (Vercel default) | 20.x LTS |
-| TypeScript | 5.0.0 | 5.6.x | 5.6.3 |
-| React | 18.0.0 | 19.x | 19.0.0 |
-| Remix | Latest in template | Latest | Via @shopify/shopify-app-remix 4.1.0 |
-| Prisma | 5.10.0 | 7.2.0+ | 7.2.0 |
-| Vite | 5.0.0 | 7.x | 7.x |
-| @shopify/shopify-app-remix | 3.x | 4.1.0+ | 4.1.0 |
+# Test webhooks
+shopify app webhook trigger --topic customers/data_request
+shopify app webhook trigger --topic customers/redact
+shopify app webhook trigger --topic shop/redact
 
-## Migration Path (If Starting Today)
+# Verify webhook endpoint responds 200 OK
+curl -X POST https://your-app.vercel.app/webhooks \
+  -H "X-Shopify-Topic: customers/data_request" \
+  -H "X-Shopify-Shop-Domain: test-shop.myshopify.com"
+```
 
-**Option 1: Use Remix Template (Recommended for this project)**
-- Start with `@shopify/shopify-app-remix` template
-- Stable, well-documented, production-ready
-- Migrate to React Router later when patterns stabilize
-- Best for dual architecture (admin app + separate widget)
+### GraphQL Migration Verification
+```bash
+# Remove REST API usage, test Draft Order creation
+npm run dev
+# Test in embedded admin: Create matrix → Create draft order
+# Check network tab: Only GraphQL requests to /admin/api/2026-01/graphql.json
+```
 
-**Option 2: Use React Router Template (Future-proof)**
-- Start with new `@shopify/shopify-app-react-router` template
-- Future direction, but less mature
-- May require more custom configuration
-- Consider if building single-purpose app (no separate widget)
+### Privacy Policy Hosting
+```bash
+# Option 1: Add static route to Remix app
+# app/routes/_index.privacy-policy.tsx
+export default function PrivacyPolicy() {
+  return <div>{/* Privacy policy content */}</div>;
+}
 
-**Recommendation:** Start with Remix (Option 1). The template is mature, the monorepo structure cleanly separates admin app from widget, and a migration path to React Router exists when needed.
+# Option 2: Host on external service (Notion, GitHub Pages)
+# Copy URL to Partner Dashboard app listing
+```
+
+---
+
+## Pre-Submission Checklist
+
+Before submitting to App Store, verify:
+
+- [ ] **GraphQL Migration:** No REST API calls in code (`grep -r "admin.rest" app/`)
+- [ ] **GDPR Webhooks:** All 3 webhooks respond 200 OK (test with Shopify CLI)
+- [ ] **Privacy Policy:** Public URL accessible, linked in app listing
+- [ ] **Billing:** If paid app, Managed Pricing or Billing API configured
+- [ ] **Performance:** Lighthouse scores not degraded >10 points on test store
+- [ ] **Test Store:** Full E2E flow works (install, create matrix, create draft order, widget rendering)
+- [ ] **App Listing:** Screenshots, description, support email, demo video (optional)
+- [ ] **OAuth Scopes:** Only request necessary permissions (`read_products`, `write_draft_orders`)
+- [ ] **Error Handling:** No 404/500 errors in admin UI, API returns proper status codes
+- [ ] **Credentials:** Test store credentials submitted with app review (full access)
+
+**Run Automated Checks:**
+```bash
+# Shopify CLI pre-submission checks
+shopify app deploy
+# Partner Dashboard → Apps → [Your App] → App Store listing → "Run checks"
+```
+
+---
+
+## What NOT to Add
+
+| Technology | Why Avoid | Instead Use |
+|------------|-----------|-------------|
+| **Headless UI / Radix UI** | Overkill for simple dropdowns, adds bundle size | Native `<select>` |
+| **React 19** | Unnecessary upgrade, potential breaking changes | Keep React 18.2.0 |
+| **Custom dropdown libraries** | Accessibility complexity, mobile incompatibility | Native HTML `<select>` |
+| **Prisma 6/7 upgrade** | No new features needed, migration risk | Keep Prisma 5.8.0 (stable) |
+| **Separate JSON validation library** | Zod already in stack | Extend existing Zod schemas |
+| **Shopify REST Admin API** | Deprecated, blocks App Store submission | Migrate to GraphQL |
+| **Custom billing UI** | Shopify requires Billing API or Managed Pricing | Use Shopify's billing |
+| **Third-party analytics** | Review required, adds complexity | Start without, add post-launch |
+
+---
+
+## Version Compatibility Matrix
+
+| Package | Current | Required | Notes |
+|---------|---------|----------|-------|
+| `@shopify/shopify-app-remix` | 2.7.0 | 2.7.0+ | Includes GraphQL client, GDPR webhook support |
+| `prisma` | 5.8.0 | 5.8.0+ | JSON field support, no upgrade needed |
+| `zod` | 4.3.6 | 4.x | Runtime validation for option selections |
+| Node.js | 20.x | 20.0.0+ | Vercel default, required for Shopify CLI |
+
+**No version upgrades required.** Existing stack validated in v1.1 production deployment.
+
+---
 
 ## Sources
 
-### Official Shopify Documentation
-- [Shopify Remix App Template](https://github.com/Shopify/shopify-app-template-remix)
-- [Shopify API: Using Polaris Web Components](https://shopify.dev/docs/api/app-home/using-polaris-components)
-- [Shopify GraphQL Admin API](https://shopify.dev/docs/api/admin-graphql/latest)
-- [Draft Orders: Set Custom Prices](https://shopify.dev/changelog/set-custom-prices-in-draft-orders)
-- [Shopify App Authentication](https://shopify.dev/docs/apps/build/authentication-authorization)
+### Shopify App Store Requirements
+- [App Store Requirements](https://shopify.dev/docs/apps/launch/shopify-app-store/app-store-requirements) — Official submission checklist
+- [App Requirements Checklist](https://shopify.dev/docs/apps/launch/app-requirements-checklist) — Technical requirements
+- [GraphQL Mandatory (April 2025)](https://shopify.dev/changelog/starting-april-2025-new-public-apps-submitted-to-shopify-app-store-must-use-graphql) — REST deprecation
 
-### Framework & Tools
-- [Polaris React Repository (Deprecated)](https://github.com/Shopify/polaris-react)
-- [Polaris—unified and for the web (2025)](https://www.shopify.com/partners/blog/polaris-unified-and-for-the-web)
-- [Vercel Remix Integration](https://vercel.com/blog/vercel-remix-integration-with-edge-functions-support)
-- [Vercel Node.js Versions](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions)
-- [Prisma ORM 7.2.0 Release](https://www.prisma.io/blog/announcing-prisma-orm-7-2-0)
-- [Neon: Connect from Prisma](https://neon.com/docs/guides/prisma)
+### GDPR Compliance
+- [Privacy Law Compliance](https://shopify.dev/docs/apps/build/compliance/privacy-law-compliance) — Official GDPR webhook docs
+- [How to Configure GDPR Webhooks](https://medium.com/@muhammadehsanullah123/how-to-configure-gdpr-compliance-webhooks-in-shopify-public-apps-b2107721a58f) — Implementation guide
 
-### Component Library
-- [Vite: Library Mode](https://dev.to/receter/how-to-create-a-react-component-library-using-vites-library-mode-4lma)
-- [tsup vs Vite/Rollup](https://dropanote.de/en/blog/20250914-tsup-vs-vite-rollup-when-simple-beats-complex/)
-- [React Component Libraries 2026 Guide](https://yakhil25.medium.com/react-component-libraries-in-2026-the-definitive-guide-to-choosing-your-stack-fa7ae0368077)
+### Billing
+- [Managed Pricing Documentation](https://shopify.dev/docs/apps/launch/billing/managed-pricing) — Shopify-hosted billing
+- [Billing API Guide](https://shopify.dev/docs/apps/launch/billing) — Custom billing implementation
 
-### Version Information (WebSearch findings - verify with official docs)
-- [@shopify/shopify-app-remix on npm](https://www.npmjs.com/package/@shopify/shopify-app-remix) (version 4.1.0)
-- [Prisma Releases](https://github.com/prisma/prisma/releases) (version 7.2.0+)
-- [Vercel Changelog: Node.js 20 LTS](https://vercel.com/changelog/node-js-v20-lts-is-now-generally-available)
+### Accessibility & Dropdowns
+- [Select Dropdown Accessibility](https://www.atomica11y.com/accessible-design/select/) — WCAG best practices
+- [Native vs Custom Dropdowns](https://www.webaxe.org/accessible-custom-select-dropdowns/) — Why native `<select>` wins
+- [Customizable Native Selects](https://medium.com/@karstenbiedermann/customizable-native-selects-a-css-game-changer-for-development-design-c3bbec014f44) — CSS `appearance: base-select;`
 
-### Package Managers
-- [@shopify/shopify-app-session-storage-prisma](https://www.npmjs.com/package/@shopify/shopify-app-session-storage-prisma)
-- [Monorepos in JavaScript & TypeScript](https://www.robinwieruch.de/javascript-monorepos/)
+### Data Model & Validation
+- [Prisma JSON Fields](https://www.prisma.io/docs/orm/prisma-client/special-fields-and-types/working-with-json-fields) — JSON querying in PostgreSQL
+- [Zod Documentation](https://zod.dev/) — Runtime TypeScript validation
 
-**Note:** All version numbers verified as of February 3, 2026. Always check official documentation for latest versions before starting development.
+### Privacy Policy
+- [Shopify Privacy Requirements](https://shopify.dev/docs/apps/launch/privacy-requirements) — What to include
+- [Shopify Policy Generator](https://www.shopify.com/tools/policy-generator) — Free template
+
+### Performance
+- [App Store Best Practices](https://shopify.dev/docs/apps/launch/shopify-app-store/best-practices) — Lighthouse requirements
+- [Lighthouse Performance](https://developer.chrome.com/docs/lighthouse/performance/) — Testing guide
+
+---
+
+**Researched:** 2026-02-09
+**Confidence:** HIGH (All requirements verified with official Shopify documentation)
+**Next Step:** Implement option groups schema → Admin CRUD → Widget dropdowns → GraphQL migration → GDPR webhooks → App Store submission
