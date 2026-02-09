@@ -120,9 +120,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 11-01-PLAN.md — Prisma schema for option groups, choices, and product assignments with migration
-- [ ] 11-02-PLAN.md — Zod validators and service layer for option group CRUD and assignments
-- [ ] 11-03-PLAN.md — TDD: Option price calculator with integer arithmetic and price breakdown
+- [x] 11-01-PLAN.md — Prisma schema for option groups, choices, and product assignments with migration
+- [x] 11-02-PLAN.md — Zod validators and service layer for option group CRUD and assignments
+- [x] 11-03-PLAN.md — TDD: Option price calculator with integer arithmetic and price breakdown
 
 #### Phase 12: Admin UI for Option Groups
 **Goal**: Merchants can create and manage option groups through Polaris admin dashboard
@@ -216,7 +216,7 @@ Phases execute in numeric order: 11 → 12 → 13 → 14 → 15 → 16
 | 8. Production Deployment | v1.1 | 2/2 | Complete | 2026-02-08 |
 | 9. Shopify Integration & OAuth | v1.1 | 2/2 | Complete | 2026-02-08 |
 | 10. Production Verification | v1.1 | 2/2 | Complete | 2026-02-08 |
-| 11. Data Model & Price Calculation Foundation | v1.2 | 0/TBD | Not started | - |
+| 11. Data Model & Price Calculation Foundation | v1.2 | 3/3 | Complete | 2026-02-09 |
 | 12. Admin UI for Option Groups | v1.2 | 0/TBD | Not started | - |
 | 13. REST API Extension | v1.2 | 0/TBD | Not started | - |
 | 14. Widget Integration | v1.2 | 0/TBD | Not started | - |
