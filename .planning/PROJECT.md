@@ -34,12 +34,20 @@ Merchants can offer custom-dimension pricing on their headless Shopify storefron
 
 ### Active
 
-(No active requirements — next milestone not yet planned)
+<!-- v1.2 Option Groups & App Store -->
+
+- [ ] Merchant can create reusable option groups with named choices (e.g. "Glass Type": Clear, Tempered, Laminated)
+- [ ] Each option choice has a price modifier — either fixed amount or percentage of base matrix price
+- [ ] Merchant can assign option groups to products (shared across products, multiple groups per product)
+- [ ] Option modifiers stack on the base matrix price, percentages calculated from base (not compounded)
+- [ ] REST API accepts option selections and returns the modified total price
+- [ ] Widget renders option group dropdowns alongside dimension inputs with live price updates
+- [ ] App submitted to Shopify App Store and passes review
 
 ### Out of Scope
 
 - Formula-based pricing — v1 uses fixed breakpoint matrices only
-- Add-on options (edge finishing, tinting, etc.) — matrix price is the full price
+- ~~Add-on options~~ — Now in scope as option groups for v1.2
 - Multiple matrices per product — use separate products for different material pricing
 - Interpolation between breakpoints — round-up strategy keeps it simple and predictable
 - Non-headless storefronts — this targets headless/custom storefronts specifically
@@ -92,5 +100,8 @@ Merchants can offer custom-dimension pricing on their headless Shopify storefron
 | Shop-specific webhooks via afterAuth | App-specific TOML webhooks incompatible with legacy install flow | ✓ Good |
 | OPTIONS before auth in loaders | Remix routes OPTIONS to loader; browser preflight needs 204 | ✓ Good |
 
+| Reusable option groups with price modifiers | Flexible add-on pricing without formula complexity | — Pending |
+| Percentage modifiers from base (no compounding) | Predictable for merchants, simpler calculation | — Pending |
+
 ---
-*Last updated: 2026-02-08 after v1.1 milestone*
+*Last updated: 2026-02-09 after v1.2 milestone start*

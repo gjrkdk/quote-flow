@@ -1,7 +1,7 @@
 # Project State: Shopify Price Matrix App (QuoteFlow)
 
-**Last Updated:** 2026-02-08
-**Status:** v1.1 Shipped — Quick tasks in progress
+**Last Updated:** 2026-02-09
+**Status:** v1.2 Option Groups & App Store — Defining requirements
 
 ## Project Reference
 
@@ -9,18 +9,20 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Core Value:** Merchants can offer custom-dimension pricing on their headless Shopify storefronts without building their own pricing infrastructure
 
-**Current Focus:** Quick maintenance tasks
+**Current Focus:** v1.2 Option Groups & App Store
 
 ## Current Position
 
-**Milestone:** v1.1 Publish & Polish — SHIPPED
-**Next:** Not yet planned
-**Last activity:** 2026-02-08 — Completed quick task 001 (rename widget package)
+**Milestone:** v1.2 Option Groups & App Store
+**Phase:** Not started (defining requirements)
+**Plan:** —
+**Status:** Defining requirements
+**Last activity:** 2026-02-09 — Milestone v1.2 started
 
 Progress:
 - v1.0 MVP: 6 phases, 23 plans — shipped 2026-02-06
 - v1.1 Publish & Polish: 4 phases, 8 plans — shipped 2026-02-08
-- Quick tasks: 1 completed (001-rename-widget-package)
+- v1.2 Option Groups & App Store: defining requirements
 
 ## Archived
 
@@ -47,9 +49,9 @@ Progress:
 
 ## Session Continuity
 
-**Last session:** 2026-02-08 17:44:00 UTC
-**Stopped at:** Quick task 001 complete
-**Resume file:** .planning/quick/001-rename-widget-package/001-SUMMARY.md
+**Last session:** 2026-02-09
+**Stopped at:** Defining v1.2 requirements
+**Resume file:** —
 
 ---
 *State tracked since: 2026-02-03*
