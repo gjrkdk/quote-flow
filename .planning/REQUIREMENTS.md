@@ -86,33 +86,41 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| OPT-01 | — | Pending |
-| OPT-02 | — | Pending |
-| OPT-03 | — | Pending |
-| OPT-04 | — | Pending |
-| OPT-05 | — | Pending |
-| PRICE-01 | — | Pending |
-| PRICE-02 | — | Pending |
-| PRICE-03 | — | Pending |
-| PRICE-04 | — | Pending |
-| API-01 | — | Pending |
-| API-02 | — | Pending |
-| API-03 | — | Pending |
-| API-04 | — | Pending |
-| WIDGET-01 | — | Pending |
-| WIDGET-02 | — | Pending |
-| WIDGET-03 | — | Pending |
-| WIDGET-04 | — | Pending |
-| STORE-01 | — | Pending |
-| STORE-02 | — | Pending |
-| STORE-03 | — | Pending |
-| STORE-04 | — | Pending |
+| OPT-01 | Phase 11 | Pending |
+| OPT-02 | Phase 11 | Pending |
+| OPT-03 | Phase 12 | Pending |
+| OPT-04 | Phase 12 | Pending |
+| OPT-05 | Phase 11 | Pending |
+| PRICE-01 | Phase 11 | Pending |
+| PRICE-02 | Phase 11 | Pending |
+| PRICE-03 | Phase 11 | Pending |
+| PRICE-04 | Phase 11 | Pending |
+| API-01 | Phase 13 | Pending |
+| API-02 | Phase 13 | Pending |
+| API-03 | Phase 13 | Pending |
+| API-04 | Phase 13 | Pending |
+| WIDGET-01 | Phase 14 | Pending |
+| WIDGET-02 | Phase 14 | Pending |
+| WIDGET-03 | Phase 14 | Pending |
+| WIDGET-04 | Phase 14 | Pending |
+| STORE-01 | Phase 15 | Pending |
+| STORE-02 | Phase 16 | Pending |
+| STORE-03 | Phase 16 | Pending |
+| STORE-04 | Phase 16 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 21 total
-- Mapped to phases: 0
-- Unmapped: 21 (pending roadmap creation)
+- Mapped to phases: 21 (100% coverage)
+- Unmapped: 0
+
+**Phase Distribution:**
+- Phase 11 (Data Model & Price Calculation): 7 requirements
+- Phase 12 (Admin UI): 2 requirements
+- Phase 13 (REST API Extension): 4 requirements
+- Phase 14 (Widget Integration): 4 requirements
+- Phase 15 (GraphQL Migration & GDPR): 1 requirement
+- Phase 16 (Performance & App Store): 3 requirements
 
 ---
 *Requirements defined: 2026-02-09*
-*Last updated: 2026-02-09 after initial definition*
+*Last updated: 2026-02-09 after roadmap creation*
