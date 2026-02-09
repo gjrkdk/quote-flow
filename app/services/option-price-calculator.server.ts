@@ -6,6 +6,13 @@
  * ceiling rounding for percentage calculations.
  */
 
+/**
+ * Basis points divisor for percentage calculations.
+ * 10000 basis points = 100%
+ * e.g., 1000 basis points = 10%
+ */
+const BASIS_POINTS_DIVISOR = 10000;
+
 export interface PriceModifier {
   type: "FIXED" | "PERCENTAGE";
   value: number; // FIXED: cents, PERCENTAGE: basis points (10000 = 100%)
@@ -55,7 +62,7 @@ export function calculateModifierAmount(
 
   // PERCENTAGE: calculate from base price with ceiling round-up
   // Math.ceil rounds toward positive infinity for both positive and negative
-  return Math.ceil((basePriceCents * modifier.value) / 10000);
+  return Math.ceil((basePriceCents * modifier.value) / BASIS_POINTS_DIVISOR);
 }
 
 /**
