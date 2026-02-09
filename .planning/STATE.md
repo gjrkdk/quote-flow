@@ -15,9 +15,9 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Milestone:** v1.2 Option Groups & App Store
 **Phase:** 12 of 16 (Admin UI for Option Groups)
-**Plan:** Ready to plan
-**Status:** Phase 11 verified and complete, ready to plan Phase 12
-**Last activity:** 2026-02-09 — Phase 11 executed and verified (3/3 plans, all 5 must-haves passed)
+**Plan:** 1 of 3 (complete)
+**Status:** Phase 12 Plan 01 complete
+**Last activity:** 2026-02-09 — Phase 12 Plan 01 executed (option groups list page)
 
 Progress: [███████████████████░] 68% (11 of 16 phases complete)
 
@@ -29,7 +29,7 @@ Milestones:
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 34 (v1.0: 23 plans, v1.1: 8 plans, v1.2: 3 plans)
+- Total plans completed: 35 (v1.0: 23 plans, v1.1: 8 plans, v1.2: 4 plans)
 - v1.0 duration: 4 days
 - v1.1 duration: 2 days
 - v1.2 duration: In progress
@@ -51,6 +51,7 @@ Milestones:
 | Phase 11 P01 | 148 | 2 tasks | 2 files |
 | Phase 11 P02 | 153 | 2 tasks | 2 files |
 | Phase 11 P03 | 169 | 1 tasks | 2 files |
+| Phase 12 P01 | 75 | 2 tasks | 2 files |
 
 ## Archived
 
@@ -77,6 +78,9 @@ Milestones:
 - Application-level cap enforcement for option group assignments (5 groups per product in service layer)
 - Ceiling rounding for percentage modifiers (Math.ceil toward positive infinity)
 - Non-compounding modifier stacking (all calculate from base price)
+- Follow exact IndexTable pattern from matrices list page for option groups list (Phase 12-01: consistency in admin UI)
+- Show 'Required/Optional' as Type column in option groups list (Phase 12-01: clarity)
+- Display product usage warning in delete modal for option groups (Phase 12-01: merchant awareness of impact)
 
 ### Known Technical Debt
 - Billing gates disabled for testing (TODO markers in `billing.server.ts`)
@@ -97,7 +101,7 @@ None yet.
 ## Session Continuity
 
 **Last session:** 2026-02-09
-**Stopped at:** Phase 11 executed and verified, ready to plan Phase 12
+**Stopped at:** Phase 12 Plan 01 complete (option groups list page)
 **Resume file:** None
 
 ---
