@@ -31,10 +31,10 @@ Requirements for milestone v1.2: Option Groups & App Store. Each maps to roadmap
 
 ### Widget
 
-- [ ] **WIDGET-01**: Widget renders dropdown for each option group assigned to the product
-- [ ] **WIDGET-02**: Widget updates price live as customer selects options
-- [ ] **WIDGET-03**: Widget shows price modifier next to each option value (e.g. "+$15.00", "+20%")
-- [ ] **WIDGET-04**: Widget works correctly with products that have no option groups (backward compatible)
+- [x] **WIDGET-01**: Widget renders dropdown for each option group assigned to the product
+- [x] **WIDGET-02**: Widget updates price live as customer selects options
+- [x] **WIDGET-03**: Widget shows price modifier next to each option value (e.g. "+$15.00", "+20%")
+- [x] **WIDGET-04**: Widget works correctly with products that have no option groups (backward compatible)
 
 ### App Store
 

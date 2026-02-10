@@ -170,9 +170,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 14-01-PLAN.md — REST API endpoint for product options + widget type extensions
-- [ ] 14-02-PLAN.md — useOptionGroups hook, OptionGroupSelect component, usePriceFetch extension, CSS styles
-- [ ] 14-03-PLAN.md — Main widget integration with option groups and draft order extension
+- [x] 14-01-PLAN.md — REST API endpoint for product options + widget type extensions
+- [x] 14-02-PLAN.md — useOptionGroups hook, OptionGroupSelect component, usePriceFetch extension, CSS styles
+- [x] 14-03-PLAN.md — Main widget integration with option groups and draft order extension
 
 #### Phase 15: GraphQL Migration & GDPR
 **Goal**: Shopify Admin API calls migrated to GraphQL with functional GDPR webhooks
@@ -224,6 +224,6 @@ Phases execute in numeric order: 11 → 12 → 13 → 14 → 15 → 16
 | 11. Data Model & Price Calculation Foundation | v1.2 | 3/3 | Complete | 2026-02-09 |
 | 12. Admin UI for Option Groups | v1.2 | 3/3 | Complete | 2026-02-09 |
 | 13. REST API Extension | v1.2 | 2/2 | Complete | 2026-02-10 |
-| 14. Widget Integration | v1.2 | 0/TBD | Not started | - |
+| 14. Widget Integration | v1.2 | 3/3 | Complete | 2026-02-10 |
 | 15. GraphQL Migration & GDPR | v1.2 | 0/TBD | Not started | - |
 | 16. Performance Audit & App Store Submission | v1.2 | 0/TBD | Not started | - |
