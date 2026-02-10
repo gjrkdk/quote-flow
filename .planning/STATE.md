@@ -15,9 +15,9 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Milestone:** v1.2 Option Groups & App Store
 **Phase:** 14 of 16 (Widget Integration)
-**Plan:** 3 of 3 (complete)
-**Status:** Phase 14 complete - Widget integration with option groups finished
-**Last activity:** 2026-02-10 — Phase 14 verified (all 5 success criteria passed)
+**Plan:** 4 of 4 (complete)
+**Status:** Phase 14 complete - Widget integration with option groups finished, unit mismatch bug fixed
+**Last activity:** 2026-02-10 — Plan 14-04 complete (gap closure: dollar-to-cents conversion fix)
 
 Progress: [█████████████████████] 88% (14 of 16 phases complete)
 
@@ -59,6 +59,8 @@ Milestones:
 | Phase 14 P01 | 102 | 2 tasks | 2 files |
 | Phase 14 P02 | 109 | 2 tasks | 4 files |
 | Phase 14 P03 | 129 | 2 tasks | 2 files |
+| Phase 14 P04 | 75 | 1 tasks | 2 files |
+| Phase 14 P04 | 75 | 1 tasks | 2 files |
 
 ## Archived
 
@@ -103,6 +105,8 @@ Milestones:
 - No debouncing for option selection changes (Phase 14-02: immediate price refetch unlike debounced dimensions)
 - Pre-select default choices for REQUIRED groups on mount (Phase 14-03: improves UX, ensures valid initial state)
 - Pass undefined (not empty array) when no selections (Phase 14-03: cleaner API semantics)
+- Math.round for dollar-to-cents conversion (Phase 14-04: handles floating-point precision when multiplying by 100)
+- Convert all API response price fields to dollars (Phase 14-04: ensures consistent dollar amounts in basePrice and appliedAmount fields)
 
 ### Known Technical Debt
 - Billing gates disabled for testing (TODO markers in `billing.server.ts`)
@@ -122,8 +126,8 @@ None yet.
 
 ## Session Continuity
 
-**Last session:** 2026-02-10T20:26:15Z
-**Stopped at:** Completed 14-03-PLAN.md
+**Last session:** 2026-02-10T22:11:01Z
+**Stopped at:** Completed 14-04-PLAN.md
 **Resume file:** None
 
 ---
