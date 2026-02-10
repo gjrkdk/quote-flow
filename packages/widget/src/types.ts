@@ -64,6 +64,58 @@ export interface AddToCartEvent {
 }
 
 /**
+ * Option group assigned to a product.
+ * Internal type — not exported to consumers.
+ */
+export interface OptionGroup {
+  id: string;
+  name: string;
+  requirement: 'REQUIRED' | 'OPTIONAL';
+  choices: OptionChoice[];
+}
+
+/**
+ * Choice within an option group.
+ * Internal type — not exported to consumers.
+ */
+export interface OptionChoice {
+  id: string;
+  label: string;
+  modifierType: 'FIXED' | 'PERCENTAGE';
+  modifierValue: number;
+  isDefault: boolean;
+}
+
+/**
+ * User's selection for an option group.
+ * Internal type — not exported to consumers.
+ */
+export interface OptionSelection {
+  optionGroupId: string;
+  choiceId: string;
+}
+
+/**
+ * API response shape from GET /api/v1/products/:id/options
+ * Internal type — not exported to consumers.
+ */
+export interface OptionGroupsApiResponse {
+  optionGroups: OptionGroup[];
+}
+
+/**
+ * Option modifier breakdown information.
+ * Internal type — not exported to consumers.
+ */
+export interface OptionModifierInfo {
+  optionGroup: string;
+  choice: string;
+  modifierType: 'FIXED' | 'PERCENTAGE';
+  modifierValue: number;
+  appliedAmount: number;
+}
+
+/**
  * API response shape from GET /api/v1/products/:id/price
  * Internal type — not exported to consumers.
  */
@@ -84,6 +136,8 @@ export interface PriceApiResponse {
     minHeight: number;
     maxHeight: number;
   };
+  basePrice?: number;
+  optionModifiers?: OptionModifierInfo[];
 }
 
 /**
@@ -102,6 +156,8 @@ export interface DraftOrderApiResponse {
     unit: string;
   };
   quantity: number;
+  basePrice?: number;
+  optionModifiers?: OptionModifierInfo[];
 }
 
 /**
