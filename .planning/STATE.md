@@ -15,9 +15,9 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Milestone:** v1.2 Option Groups & App Store
 **Phase:** 13 of 16 (REST API Extension)
-**Plan:** 1 of 2 (complete)
-**Status:** Phase 13 Plan 01 complete - option selection validation foundation ready
-**Last activity:** 2026-02-10 — Phase 13 Plan 01 executed (validation schemas & business rule service)
+**Plan:** 2 of 2 (complete)
+**Status:** Phase 13 complete - REST API endpoints extended with option group support
+**Last activity:** 2026-02-10 — Phase 13 Plan 02 executed (price and draft orders endpoints with options)
 
 Progress: [███████████████████░] 68% (11 of 16 phases complete)
 
@@ -29,7 +29,7 @@ Milestones:
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 38 (v1.0: 23 plans, v1.1: 8 plans, v1.2: 7 plans)
+- Total plans completed: 39 (v1.0: 23 plans, v1.1: 8 plans, v1.2: 8 plans)
 - v1.0 duration: 4 days
 - v1.1 duration: 2 days
 - v1.2 duration: In progress
@@ -55,6 +55,7 @@ Milestones:
 | Phase 12 P02 | 133 | 2 tasks | 2 files |
 | Phase 12 P03 | 120 | 2 tasks | 1 files |
 | Phase 13 P01 | 101 | 2 tasks | 2 files |
+| Phase 13 P02 | 208 | 2 tasks | 4 files |
 
 ## Archived
 
@@ -89,6 +90,9 @@ Milestones:
 - Separate fetcher instances for independent form actions on same page (Phase 12-03: prevent action conflicts)
 - Loader-level aggregation for product option group counts (Phase 12-03: avoid N+1 queries in assignment UI)
 - "At limit" badge for products with 5 option groups assigned (Phase 12-03: visual cap enforcement)
+- Store option selections as JSON in DraftOrderRecord rather than normalized relations (Phase 13-02: simpler schema, point-in-time snapshot)
+- Transform option IDs to names/labels for Shopify custom attributes (Phase 13-02: human-readable for merchants)
+- Include basePrice and optionModifiers in response only when options provided (Phase 13-02: backward compatibility)
 
 ### Known Technical Debt
 - Billing gates disabled for testing (TODO markers in `billing.server.ts`)
@@ -108,8 +112,8 @@ None yet.
 
 ## Session Continuity
 
-**Last session:** 2026-02-10T19:48:39.342Z
-**Stopped at:** Completed 13-01-PLAN.md
+**Last session:** 2026-02-10T20:51:33Z
+**Stopped at:** Completed 13-02-PLAN.md
 **Resume file:** None
 
 ---
