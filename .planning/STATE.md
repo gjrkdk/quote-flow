@@ -14,12 +14,12 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 **Milestone:** v1.2 Option Groups & App Store
-**Phase:** 13 of 16 (REST API Extension)
-**Plan:** 2 of 2 (complete)
-**Status:** Phase 13 complete - REST API extended with option selections
-**Last activity:** 2026-02-10 — Phase 13 verified (all 5 success criteria passed)
+**Phase:** 14 of 16 (Widget Integration)
+**Plan:** 1 of 3 (complete)
+**Status:** Phase 14 Plan 01 complete - REST API endpoint and widget types created
+**Last activity:** 2026-02-10 — Completed 14-01-PLAN.md (REST API & Widget Types)
 
-Progress: [████████████████████░] 75% (13 of 16 phases complete)
+Progress: [█████████████████████] 81% (14 of 16 phases in progress, 13 complete)
 
 Milestones:
 - v1.0 MVP: 6 phases, 23 plans — shipped 2026-02-06
@@ -29,7 +29,7 @@ Milestones:
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 39 (v1.0: 23 plans, v1.1: 8 plans, v1.2: 8 plans)
+- Total plans completed: 40 (v1.0: 23 plans, v1.1: 8 plans, v1.2: 9 plans)
 - v1.0 duration: 4 days
 - v1.1 duration: 2 days
 - v1.2 duration: In progress
@@ -56,6 +56,7 @@ Milestones:
 | Phase 12 P03 | 120 | 2 tasks | 1 files |
 | Phase 13 P01 | 101 | 2 tasks | 2 files |
 | Phase 13 P02 | 208 | 2 tasks | 4 files |
+| Phase 14 P01 | 102 | 2 tasks | 2 files |
 
 ## Archived
 
@@ -93,6 +94,9 @@ Milestones:
 - Store option selections as JSON in DraftOrderRecord rather than normalized relations (Phase 13-02: simpler schema, point-in-time snapshot)
 - Transform option IDs to names/labels for Shopify custom attributes (Phase 13-02: human-readable for merchants)
 - Include basePrice and optionModifiers in response only when options provided (Phase 13-02: backward compatibility)
+- Return empty array (not 404) for products without option groups (Phase 14-01: widget should handle empty state gracefully)
+- Place all option types in internal section of widget types file (Phase 14-01: not exported to consumers)
+- Extend PriceApiResponse and DraftOrderApiResponse with optional fields (Phase 14-01: backward compatible)
 
 ### Known Technical Debt
 - Billing gates disabled for testing (TODO markers in `billing.server.ts`)
@@ -112,8 +116,8 @@ None yet.
 
 ## Session Continuity
 
-**Last session:** 2026-02-10
-**Stopped at:** Phase 13 complete - all 2 plans executed and verified
+**Last session:** 2026-02-10T20:17:44.610Z
+**Stopped at:** Completed 14-01-PLAN.md
 **Resume file:** None
 
 ---
