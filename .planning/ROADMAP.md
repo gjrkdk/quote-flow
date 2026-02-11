@@ -185,10 +185,11 @@ Plans:
   3. GDPR webhooks (customers/data_request, customers/redact, shop/redact) actually delete data
   4. shop/redact webhook removes all option groups and matrices for the store
   5. Webhook responses return within 200ms (queue long-running deletions)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 15-01: TBD during phase planning
+- [ ] 15-01-PLAN.md — JobQueue model, job queue service, and GDPR deletion service
+- [ ] 15-02-PLAN.md — Webhook async refactor and Vercel Cron endpoint
 
 #### Phase 16: Performance Audit & App Store Submission
 **Goal**: App submitted to Shopify App Store and passes performance standards
