@@ -14,6 +14,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "typecheck": "tsc --noEmit",
+    "lighthouse": "lhci autorun",
     "vercel-build": "prisma generate && prisma migrate deploy && remix vite:build"
   },
   "dependencies": {
@@ -40,6 +41,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@lhci/cli": "^0.15.1",
     "@remix-run/eslint-config": "^2.5.0",
     "@shopify/app": "^3.58.0",
     "@types/node": "^20.10.6",
@@ -47,6 +49,7 @@
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
     "eslint": "^8.56.0",
+    "playwright": "^1.58.2",
     "typescript": "^5.3.3",
     "vite-tsconfig-paths": "^4.2.3",
     "vitest": "^4.0.18"
