@@ -77,6 +77,22 @@ model GdprRequest {
   @@map("gdpr_requests")
 }
 
+model JobQueue {
+  id          String    @id @default(cuid())
+  type        String
+  payload     Json
+  status      String    @default("pending")
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3) @map("max_attempts")
+  scheduledAt DateTime  @default(now()) @map("scheduled_at")
+  processedAt DateTime? @map("processed_at")
+  error       String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([status, scheduledAt])
+  @@map("job_queue")
+}
+
 model PriceMatrix {
   id                String             @id @default(cuid())
   storeId           String             @map("store_id")
