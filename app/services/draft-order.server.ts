@@ -5,7 +5,10 @@
  * Handles price calculation, dimension validation, API retries, and local record keeping.
  */
 
-import { BreakpointAxis } from "@prisma/client";
+// GraphQL Admin API: This service uses the draftOrderCreate GraphQL mutation
+// (not the REST Admin API) per Shopify's recommended migration path.
+
+import { BreakpointAxis, type Prisma } from "@prisma/client";
 import { backOff } from "exponential-backoff";
 import { prisma } from "~/db.server";
 import {
@@ -204,7 +207,7 @@ export async function submitDraftOrder(
           quantity,
           calculatedPrice: unitPrice,
           totalPrice: parseFloat(draftOrder.totalPrice),
-          optionSelections: options ?? null,
+          optionSelections: (options ?? null) as Prisma.InputJsonValue,
         },
       });
 
