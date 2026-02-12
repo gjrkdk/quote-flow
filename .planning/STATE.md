@@ -15,11 +15,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Milestone:** v1.2 Option Groups & App Store
 **Phase:** 15 of 16 (GraphQL Migration & GDPR)
-**Plan:** 1 of 2 (complete)
-**Status:** Job queue infrastructure complete - async webhook processing foundation ready
-**Last activity:** 2026-02-12 — Plan 15-01 complete (job queue, GDPR handlers)
+**Plan:** 2 of 2 (complete)
+**Status:** Phase 15 complete - async GDPR processing and GraphQL migration verified
+**Last activity:** 2026-02-12 — Plan 15-02 complete (async webhooks, Vercel Cron, GraphQL verification)
 
-Progress: [██████████████████████] 90% (15 of 16 phases started, 14.5 complete)
+Progress: [███████████████████████] 93.75% (15 of 16 phases complete)
 
 Milestones:
 - v1.0 MVP: 6 phases, 23 plans — shipped 2026-02-06
@@ -29,7 +29,7 @@ Milestones:
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 43 (v1.0: 23 plans, v1.1: 8 plans, v1.2: 12 plans)
+- Total plans completed: 44 (v1.0: 23 plans, v1.1: 8 plans, v1.2: 13 plans)
 - v1.0 duration: 4 days
 - v1.1 duration: 2 days
 - v1.2 duration: In progress
@@ -62,6 +62,7 @@ Milestones:
 | Phase 14 P04 | 75 | 1 tasks | 2 files |
 | Phase 14 P04 | 75 | 1 tasks | 2 files |
 | Phase 15 P01 | 228 | 3 tasks | 4 files |
+| Phase 15 P02 | 125 | 3 tasks | 4 files |
 
 ## Archived
 
@@ -110,6 +111,8 @@ Milestones:
 - Convert all API response price fields to dollars (Phase 14-04: ensures consistent dollar amounts in basePrice and appliedAmount fields)
 - Database-backed job queue with exponential backoff (Phase 15-01: simpler than external queue service for MVP)
 - Acknowledgment-only for customer_redact (Phase 15-01: app stores no customer PII)
+- Enqueue async jobs for GDPR webhooks (Phase 15-02: 200ms response time vs synchronous deletion)
+- Vercel Cron with 10 jobs per invocation (Phase 15-02: 600 jobs/hour capacity)
 
 ### Known Technical Debt
 - Billing gates disabled for testing (TODO markers in `billing.server.ts`)
@@ -129,8 +132,8 @@ None yet.
 
 ## Session Continuity
 
-**Last session:** 2026-02-12T17:03:05.174Z
-**Stopped at:** Completed 15-01-PLAN.md
+**Last session:** 2026-02-12T17:08:03.643Z
+**Stopped at:** Completed 15-02-PLAN.md
 **Resume file:** None
 
 ---
