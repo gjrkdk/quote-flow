@@ -14,12 +14,12 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 **Milestone:** v1.2 Option Groups & App Store
-**Phase:** 15 of 16 (GraphQL Migration & GDPR)
-**Plan:** 2 of 2 (complete)
-**Status:** Phase 15 complete - async GDPR processing and GraphQL migration verified, ready for Phase 16
-**Last activity:** 2026-02-12 — Phase 15 execution complete, verification passed (10/10 must-haves)
+**Phase:** 16 of 16 (Performance Audit & App Store Submission)
+**Plan:** 1 of 3 (complete)
+**Status:** Phase 16 Plan 01 complete - database indexes verified, Lighthouse CI configured
+**Last activity:** 2026-02-12 — Database index verification and Lighthouse CI setup complete
 
-Progress: [███████████████████████] 93.75% (15 of 16 phases complete)
+Progress: [███████████████████████] 93.75% (15 of 16 phases complete, Phase 16 in progress)
 
 Milestones:
 - v1.0 MVP: 6 phases, 23 plans — shipped 2026-02-06
@@ -63,6 +63,7 @@ Milestones:
 | Phase 14 P04 | 75 | 1 tasks | 2 files |
 | Phase 15 P01 | 228 | 3 tasks | 4 files |
 | Phase 15 P02 | 125 | 3 tasks | 4 files |
+| Phase 16 P01 | 132 | 2 tasks | 5 files |
 
 ## Archived
 
@@ -113,6 +114,10 @@ Milestones:
 - Acknowledgment-only for customer_redact (Phase 15-01: app stores no customer PII)
 - Enqueue async jobs for GDPR webhooks (Phase 15-02: 200ms response time vs synchronous deletion)
 - Vercel Cron with 10 jobs per invocation (Phase 15-02: 600 jobs/hour capacity)
+- SEO checks disabled for Lighthouse CI (Phase 16-01: embedded Shopify app, not public-facing)
+- Desktop preset with minimal throttling for performance testing (Phase 16-01: realistic admin environment)
+- Performance threshold 0.8 for Lighthouse (Phase 16-01: accounts for Shopify 10-point degradation rule)
+- 3-run averaging for Lighthouse baselines (Phase 16-01: consistent regression detection)
 
 ### Known Technical Debt
 - Billing gates disabled for testing (TODO markers in `billing.server.ts`)
@@ -133,7 +138,7 @@ None yet.
 ## Session Continuity
 
 **Last session:** 2026-02-12
-**Stopped at:** Phase 15 complete, verification passed, ready for Phase 16
+**Stopped at:** Phase 16 Plan 01 complete - database indexes verified, Lighthouse CI configured
 **Resume file:** None
 
 ---
