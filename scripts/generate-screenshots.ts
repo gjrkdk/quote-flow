@@ -3,6 +3,7 @@ import { mkdirSync } from 'fs';
 
 const SCREENSHOT_DIR = '.planning/app-store/screenshots';
 const VIEWPORT = { width: 1600, height: 900 };
+const BASE_URL = process.env.BASE_URL || 'http://localhost:9292';
 
 async function generateScreenshots() {
   mkdirSync(SCREENSHOT_DIR, { recursive: true });
@@ -17,7 +18,7 @@ async function generateScreenshots() {
 
   // Screenshot 1: Dashboard overview
   console.log('Capturing Screenshot 1: Dashboard overview...');
-  await page.goto('http://localhost:3000/app');
+  await page.goto(`${BASE_URL}/app`);
   await page.waitForLoadState('networkidle');
   await page.screenshot({
     path: `${SCREENSHOT_DIR}/01-dashboard.png`,
@@ -27,7 +28,7 @@ async function generateScreenshots() {
 
   // Screenshot 2: Matrix editor with price grid
   console.log('Capturing Screenshot 2: Matrix editor with price grid...');
-  await page.goto('http://localhost:3000/app/matrices');
+  await page.goto(`${BASE_URL}/app/matrices`);
   await page.waitForLoadState('networkidle');
   await page.screenshot({
     path: `${SCREENSHOT_DIR}/02-matrices.png`,
@@ -37,7 +38,7 @@ async function generateScreenshots() {
 
   // Screenshot 3: Option groups management
   console.log('Capturing Screenshot 3: Option groups management...');
-  await page.goto('http://localhost:3000/app/option-groups');
+  await page.goto(`${BASE_URL}/app/option-groups`);
   await page.waitForLoadState('networkidle');
   await page.screenshot({
     path: `${SCREENSHOT_DIR}/03-option-groups.png`,
