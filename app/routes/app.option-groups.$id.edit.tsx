@@ -14,6 +14,7 @@ import {
   Checkbox,
   Badge,
 } from "@shopify/polaris";
+import { EditIcon } from "@shopify/polaris-icons";
 import { useState, useCallback, useEffect } from "react";
 import { authenticate } from "~/shopify.server";
 import { prisma } from "~/db.server";
@@ -134,6 +135,40 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   const formData = await request.formData();
   const intent = formData.get("intent");
 
+  // Handle rename intent
+  if (intent === "rename") {
+    const name = formData.get("name");
+
+    if (!name || typeof name !== "string" || name.trim().length === 0) {
+      return json({ error: "Option group name is required" }, { status: 400 });
+    }
+
+    if (name.length > 100) {
+      return json(
+        { error: "Option group name must be 100 characters or less" },
+        { status: 400 }
+      );
+    }
+
+    // Find store
+    const store = await prisma.store.findUnique({
+      where: { shop: session.shop },
+      select: { id: true },
+    });
+
+    if (!store) {
+      return json({ error: "Store not found" }, { status: 404 });
+    }
+
+    // Update option group name
+    await prisma.optionGroup.update({
+      where: { id, storeId: store.id },
+      data: { name },
+    });
+
+    return json({ success: true });
+  }
+
   // Handle save intent (update option group)
   if (!intent || intent === "save") {
     const dataStr = formData.get("data");
@@ -244,6 +279,7 @@ export default function EditOptionGroup() {
   const loaderData = useLoaderData<typeof loader>();
   const navigate = useNavigate();
   const fetcher = useFetcher<typeof action>();
+  const renameFetcher = useFetcher<typeof action>();
   const assignFetcher = useFetcher<typeof action>();
 
   const [name, setName] = useState(loaderData.optionGroup.name);
@@ -266,6 +302,12 @@ export default function EditOptionGroup() {
   // Banner state (auto-dismiss)
   const [showSaveBanner, setShowSaveBanner] = useState(false);
   const [showSaveError, setShowSaveError] = useState<string | null>(null);
+
+  // Rename state
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editName, setEditName] = useState(name);
+  const [showRenameBanner, setShowRenameBanner] = useState(false);
+  const [showRenameError, setShowRenameError] = useState<string | null>(null);
 
   const isSubmitting = fetcher.state === "submitting" || fetcher.state === "loading";
   const actionData = fetcher.data;
@@ -331,6 +373,41 @@ export default function EditOptionGroup() {
     assignFetcher.submit(formData, { method: "post" });
   }, [assignFetcher]);
 
+  // Rename handlers
+  const handleStartEditName = useCallback(() => {
+    setEditName(name);
+    setIsEditingName(true);
+  }, [name]);
+
+  const handleSaveName = useCallback(() => {
+    if (!editName.trim()) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("intent", "rename");
+    formData.append("name", editName.trim());
+    renameFetcher.submit(formData, { method: "post" });
+  }, [editName, renameFetcher]);
+
+  const handleCancelEditName = useCallback(() => {
+    setEditName(name);
+    setIsEditingName(false);
+  }, [name]);
+
+  const handleNameKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleSaveName();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        handleCancelEditName();
+      }
+    },
+    [handleSaveName, handleCancelEditName]
+  );
+
   // Handle assignment errors (cap enforcement)
   useEffect(() => {
     if (assignActionData && "error" in assignActionData) {
@@ -356,6 +433,26 @@ export default function EditOptionGroup() {
     }
   }, [actionData]);
 
+  // Handle rename response
+  useEffect(() => {
+    if (
+      renameFetcher.data &&
+      "success" in renameFetcher.data &&
+      renameFetcher.data.success
+    ) {
+      setName(editName);
+      setIsEditingName(false);
+      setShowRenameBanner(true);
+      setShowRenameError(null);
+      const timer = setTimeout(() => setShowRenameBanner(false), 4000);
+      return () => clearTimeout(timer);
+    }
+    if (renameFetcher.data && "error" in renameFetcher.data) {
+      setShowRenameError(String(renameFetcher.data.error));
+      setShowRenameBanner(false);
+    }
+  }, [renameFetcher.data, editName]);
+
   return (
     <Page
       title={name}
@@ -380,20 +477,59 @@ export default function EditOptionGroup() {
           <Banner tone="success" onDismiss={() => setShowSaveBanner(false)}>Option group saved successfully</Banner>
         )}
 
+        {showRenameError && (
+          <Banner tone="critical" onDismiss={() => setShowRenameError(null)}>{showRenameError}</Banner>
+        )}
+
+        {showRenameBanner && (
+          <Banner tone="success" onDismiss={() => setShowRenameBanner(false)}>Option group name updated successfully</Banner>
+        )}
+
+        {/* Inline editable name card */}
+        <Card>
+          <BlockStack gap="300">
+            <Text as="h2" variant="headingMd">
+              Option group name
+            </Text>
+            {isEditingName ? (
+              <BlockStack gap="300">
+                <div onKeyDown={handleNameKeyDown}>
+                  <TextField
+                    label=""
+                    value={editName}
+                    onChange={setEditName}
+                    autoComplete="off"
+                    autoFocus
+                  />
+                </div>
+                <InlineStack gap="200">
+                  <Button
+                    variant="primary"
+                    onClick={handleSaveName}
+                    loading={renameFetcher.state === "submitting"}
+                    disabled={!editName.trim() || renameFetcher.state === "submitting"}
+                  >
+                    Save
+                  </Button>
+                  <Button onClick={handleCancelEditName}>Cancel</Button>
+                </InlineStack>
+              </BlockStack>
+            ) : (
+              <InlineStack gap="200" blockAlign="center">
+                <Text as="p" variant="headingLg">
+                  {name}
+                </Text>
+                <Button variant="plain" icon={EditIcon} onClick={handleStartEditName}>
+                  Edit
+                </Button>
+              </InlineStack>
+            )}
+          </BlockStack>
+        </Card>
+
         {/* Group details card */}
         <Card>
           <BlockStack gap="400">
-            <TextField
-              label="Group name"
-              value={name}
-              onChange={setName}
-              autoComplete="off"
-              maxLength={100}
-              placeholder="e.g., Material, Size, Finish"
-              requiredIndicator
-              helpText="Choose a descriptive name for this option group"
-            />
-
             <Select
               label="Requirement"
               options={[
