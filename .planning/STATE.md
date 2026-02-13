@@ -65,6 +65,7 @@ Milestones:
 | Phase 15 P02 | 125 | 3 tasks | 4 files |
 | Phase 16 P01 | 132 | 2 tasks | 5 files |
 | Phase 16 P02 | 176 | 2 tasks | 4 files |
+| Phase quick-2 P01 | 72 | 1 tasks | 1 files |
 
 ## Archived
 
@@ -134,6 +135,7 @@ Milestones:
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 001 | Rename widget npm package from @gjrkdk/pricing-matrix-widget to @gjrkdk/quote-flow | 2026-02-08 | 4e5f1cc | [001-rename-widget-package](./quick/001-rename-widget-package/) |
+| 002 | Create privacy policy page at /privacy for App Store submission | 2026-02-13 | 4a03fe7 | [002-create-privacy-policy-url](./quick/2-create-privacy-policy-url-that-is-needed/) |
 
 ### Blockers/Concerns
 
@@ -141,8 +143,8 @@ None yet.
 
 ## Session Continuity
 
-**Last session:** 2026-02-12T20:51:12.292Z
-**Stopped at:** Completed 16-02-PLAN.md
+**Last session:** 2026-02-13T10:28:35.266Z
+**Stopped at:** Completed quick task 2: Privacy policy page
 **Resume file:** None
 
 ---
