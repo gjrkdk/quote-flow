@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A public Shopify app that lets merchants create dimension-based price matrices (width x height) and assign them to products. Merchants manage matrices through an embedded dashboard in Shopify admin using Polaris. Headless storefront customers get real-time pricing through a REST API and a drop-in React widget published on npm. Orders are created via Shopify Draft Orders with custom locked prices. Deployed at quote-flow-one.vercel.app with Neon PostgreSQL.
+A public Shopify app that lets merchants create dimension-based price matrices (width x height) with customizable option groups (e.g. glass type, edge finish) and assign them to products. Merchants manage matrices and option groups through an embedded dashboard in Shopify admin using Polaris. Headless storefront customers get real-time pricing with option modifiers through a REST API and a drop-in React widget published on npm. Orders are created via Shopify Draft Orders with custom locked prices. Deployed at quote-flow-one.vercel.app with Neon PostgreSQL.
 
 ## Core Value
 
@@ -31,55 +31,63 @@ Merchants can offer custom-dimension pricing on their headless Shopify storefron
 - ✓ OAuth install flow works end-to-end on production — v1.1
 - ✓ Full E2E flow verified in production: install → matrix → API → widget → Draft Order — v1.1
 - ✓ Widget published on npm works in external projects — v1.1
+- ✓ Merchant can create reusable option groups with named choices (e.g. "Glass Type": Clear, Tempered, Laminated) — v1.2
+- ✓ Each option choice has a price modifier — either fixed amount or percentage of base matrix price — v1.2
+- ✓ Merchant can assign option groups to products (shared across products, multiple groups per product) — v1.2
+- ✓ Option modifiers stack on the base matrix price, percentages calculated from base (not compounded) — v1.2
+- ✓ REST API accepts option selections and returns the modified total price — v1.2
+- ✓ Widget renders option group dropdowns alongside dimension inputs with live price updates — v1.2
+- ✓ Internal Shopify API calls migrated from REST to GraphQL (mandatory for submission) — v1.2
+- ✓ GDPR webhooks functional with async job queue processing — v1.2
 
 ### Active
 
-<!-- v1.2 Option Groups & App Store -->
-
-- [ ] Merchant can create reusable option groups with named choices (e.g. "Glass Type": Clear, Tempered, Laminated)
-- [ ] Each option choice has a price modifier — either fixed amount or percentage of base matrix price
-- [ ] Merchant can assign option groups to products (shared across products, multiple groups per product)
-- [ ] Option modifiers stack on the base matrix price, percentages calculated from base (not compounded)
-- [ ] REST API accepts option selections and returns the modified total price
-- [ ] Widget renders option group dropdowns alongside dimension inputs with live price updates
-- [ ] App submitted to Shopify App Store and passes review
+(None — next milestone not yet planned)
 
 ### Out of Scope
 
-- Formula-based pricing — v1 uses fixed breakpoint matrices only
-- ~~Add-on options~~ — Now in scope as option groups for v1.2
+- Formula-based pricing — fixed breakpoint matrices cover core use case
 - Multiple matrices per product — use separate products for different material pricing
 - Interpolation between breakpoints — round-up strategy keeps it simple and predictable
 - Non-headless storefronts — this targets headless/custom storefronts specifically
 - OAuth/Storefront token auth — custom API key is simpler for headless integration
+- Conditional option logic — complexity explosion, hard to debug
+- Option inventory tracking — infinite combinations break Shopify model
+- Compounding percentages — confusing for merchants, unpredictable pricing
+- Image swatches for options — asset management burden, loading performance
+- Multi-select option groups — pricing ambiguity (additive? maximum?)
 
-### Deferred (from v1.0)
+### Deferred
 
 - MATRIX-08: Duplicate matrix
 - MATRIX-09: Export matrices to CSV
-- PRICE-02: Price per unit display
+- PRICE-05: Price per unit display
 - ORDER-02: Dimension metadata as line item properties
 - ORDER-03: Invoice URL for customer payment
 - WIDGET-06: Preset dimension quick-select
 - WIDGET-07: Multiple unit support
 - WIDGET-08: Custom dimension labels
 - PLAT-02: Visual size preview
+- STORE-02: App listing complete with icon, screenshots, and description
+- STORE-03: Test credentials provided for reviewers
+- STORE-04: App submitted to Shopify App Store for review
 
 ## Context
 
 - **Target merchants:** Shops selling custom-cut or custom-sized products (glass, fabric, wood, metal, etc.) on headless Shopify storefronts
-- **Pricing model:** Fixed breakpoint grid — merchants define discrete width steps, height steps, and a price at each (width, height) intersection. Customer dimensions snap up to the next higher step.
-- **Storefront integration:** Two paths — (1) REST API for custom integrations, (2) drop-in React widget with full UX
-- **Order flow:** Widget/API → calculate price → create Draft Order with locked custom price → convert to real order
-- **Current state:** v1.1 shipped. 7,173 LOC TypeScript. Production at quote-flow-one.vercel.app (Vercel fra1 + Neon EU Central). Widget on npm as quote-flow@0.1.0.
+- **Pricing model:** Fixed breakpoint grid with optional add-on pricing via option groups. Customer dimensions snap up to the next higher step, option modifiers (fixed or percentage) stack additively on the base price.
+- **Storefront integration:** Two paths — (1) REST API for custom integrations, (2) drop-in React widget with full UX including option dropdowns
+- **Order flow:** Widget/API → calculate price with options → create Draft Order with locked custom price → convert to real order
+- **Current state:** v1.2 shipped. 10,821 LOC TypeScript. Production at quote-flow-one.vercel.app (Vercel fra1 + Neon EU Central). Widget on npm as quote-flow@0.1.0.
 - **Tech stack:** Remix 2.5, React 18, Polaris 12, Prisma 5.8, PostgreSQL (Neon), Vite 5, TypeScript 5.3
+- **Milestones shipped:** v1.0 MVP (Feb 6), v1.1 Publish & Polish (Feb 8), v1.2 Option Groups & App Store (Feb 13)
 
 ## Constraints
 
 - **Tech stack**: Remix + Prisma + Polaris — Shopify's official app template and conventions
 - **Hosting**: Vercel (fra1) — serverless deployment
 - **Database**: Neon PostgreSQL (EU Central)
-- **Shopify API**: Must use legacy install flow (not managed installation) for proper offline session tokens
+- **Shopify API**: Must use legacy install flow (not managed installation) for proper offline session tokens. Admin API calls use GraphQL.
 - **Public app**: Must meet Shopify App Store review requirements
 
 ## Key Decisions
@@ -99,9 +107,15 @@ Merchants can offer custom-dimension pricing on their headless Shopify storefron
 | use_legacy_install_flow = true | Managed installation creates invalid offline session tokens | ✓ Good |
 | Shop-specific webhooks via afterAuth | App-specific TOML webhooks incompatible with legacy install flow | ✓ Good |
 | OPTIONS before auth in loaders | Remix routes OPTIONS to loader; browser preflight needs 204 | ✓ Good |
-
-| Reusable option groups with price modifiers | Flexible add-on pricing without formula complexity | — Pending |
-| Percentage modifiers from base (no compounding) | Predictable for merchants, simpler calculation | — Pending |
+| Reusable option groups with price modifiers | Flexible add-on pricing without formula complexity | ✓ Good |
+| Percentage modifiers from base (no compounding) | Predictable for merchants, simpler calculation | ✓ Good |
+| Integer (cents) arithmetic for prices | Avoids floating-point errors in all calculations | ✓ Good |
+| Replace strategy for option group choices | Delete all, create new — simpler than diffing | ✓ Good |
+| 5-group-per-product cap | Application-level enforcement, prevents UI complexity | ✓ Good |
+| Native HTML select for option groups | Better accessibility and mobile support than custom dropdown | ✓ Good |
+| Database-backed job queue for GDPR | Simpler than external queue service for MVP scale | ✓ Good |
+| GraphQL Admin API migration | REST deprecated, mandatory for App Store submission | ✓ Good |
+| Phase 16 removed (App Store submission) | Core functionality complete, submission can happen independently | ✓ Good |
 
 ---
-*Last updated: 2026-02-09 after v1.2 milestone start*
+*Last updated: 2026-02-13 after v1.2 milestone completion*
