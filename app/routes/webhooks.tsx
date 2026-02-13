@@ -2,7 +2,7 @@ import type { ActionFunctionArgs } from "@remix-run/node";
 import { GdprRequestType, type Prisma } from "@prisma/client";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
-import { enqueueJob } from "~/services/job-queue.server";
+import { processCustomerRedact, processShopRedact } from "~/services/gdpr-deletion.server";
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const startTime = Date.now();
@@ -31,11 +31,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       break;
 
     case "CUSTOMERS_REDACT":
-      await enqueueJob("customer_redact", { shop });
+      // Process synchronously for MVP (Vercel Hobby doesn't support frequent crons)
+      await processCustomerRedact({ shop });
       break;
 
     case "SHOP_REDACT":
-      await enqueueJob("shop_redact", { shop });
+      // Process synchronously for MVP (Vercel Hobby doesn't support frequent crons)
+      await processShopRedact({ shop });
       break;
 
     case "APP_UNINSTALLED":
