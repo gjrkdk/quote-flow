@@ -1,9 +1,8 @@
 name: Lighthouse CI
+# Disabled: App requires Shopify authentication, not accessible in CI
+# Run Lighthouse manually against deployed Vercel environment
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch: # Manual trigger only
 
 jobs:
   lighthouse:
