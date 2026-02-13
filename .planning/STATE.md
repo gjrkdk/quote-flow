@@ -14,14 +14,15 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 **Milestone:** v1.2 Option Groups & App Store
-**Phase:** 15 of 15 (GraphQL Migration & GDPR)
-**Plan:** 2 of 2 (complete)
-**Status:** Phase 15 complete - async GDPR processing and GraphQL migration verified, milestone ready for completion
-**Last activity:** 2026-02-12 — Phase 15 execution complete, verification passed (10/10 must-haves)
+**Phase:** 16 of 16 (Performance Audit & App Store Submission)
+**Plan:** 2 of 3 (complete)
+**Status:** Phase 16 Plan 02 complete - App Store listing materials prepared with v1.2 features
+**Last activity:** 2026-02-12 — App Store description, test credentials, and screenshot automation complete
 
-Progress: [████████████████████████] 100% (15 of 15 phases complete)
+Progress: [███████████████████████] 93.75% (15 of 16 phases complete, Phase 16 in progress)
 
 Milestones:
+
 - v1.0 MVP: 6 phases, 23 plans — shipped 2026-02-06
 - v1.1 Publish & Polish: 4 phases, 8 plans — shipped 2026-02-08
 - v1.2 Option Groups & App Store: 5 phases, 13 plans — complete
@@ -29,6 +30,7 @@ Milestones:
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 40 (v1.0: 23 plans, v1.1: 8 plans, v1.2: 13 plans)
 - v1.0 duration: 4 days
 - v1.1 duration: 2 days
@@ -36,33 +38,37 @@ Milestones:
 
 **By Milestone:**
 
-| Milestone | Phases | Plans | Duration |
-|-----------|--------|-------|----------|
-| v1.0 MVP | 6 | 23 | 4 days |
-| v1.1 Publish & Polish | 4 | 8 | 2 days |
-| v1.2 Option Groups & App Store | 5 | 13 | 4 days |
+| Milestone                      | Phases | Plans | Duration |
+| ------------------------------ | ------ | ----- | -------- |
+| v1.0 MVP                       | 6      | 23    | 4 days   |
+| v1.1 Publish & Polish          | 4      | 8     | 2 days   |
+| v1.2 Option Groups & App Store | 5      | 13    | 4 days   |
 
 **Recent Trend:**
+
 - v1.0 → v1.1: Faster (focused deployment work)
 - v1.2 expected: Similar to v1.0 (new features + App Store prep)
 
-| Plan | Duration (s) | Tasks | Files |
-|------|--------------|-------|-------|
-| Phase 11 P01 | 148 | 2 tasks | 2 files |
-| Phase 11 P02 | 153 | 2 tasks | 2 files |
-| Phase 11 P03 | 169 | 1 tasks | 2 files |
-| Phase 12 P01 | 75 | 2 tasks | 2 files |
-| Phase 12 P02 | 133 | 2 tasks | 2 files |
-| Phase 12 P03 | 120 | 2 tasks | 1 files |
-| Phase 13 P01 | 101 | 2 tasks | 2 files |
-| Phase 13 P02 | 208 | 2 tasks | 4 files |
-| Phase 14 P01 | 102 | 2 tasks | 2 files |
-| Phase 14 P02 | 109 | 2 tasks | 4 files |
-| Phase 14 P03 | 129 | 2 tasks | 2 files |
-| Phase 14 P04 | 75 | 1 tasks | 2 files |
-| Phase 14 P04 | 75 | 1 tasks | 2 files |
-| Phase 15 P01 | 228 | 3 tasks | 4 files |
-| Phase 15 P02 | 125 | 3 tasks | 4 files |
+| Plan              | Duration (s) | Tasks   | Files   |
+| ----------------- | ------------ | ------- | ------- |
+| Phase 11 P01      | 148          | 2 tasks | 2 files |
+| Phase 11 P02      | 153          | 2 tasks | 2 files |
+| Phase 11 P03      | 169          | 1 tasks | 2 files |
+| Phase 12 P01      | 75           | 2 tasks | 2 files |
+| Phase 12 P02      | 133          | 2 tasks | 2 files |
+| Phase 12 P03      | 120          | 2 tasks | 1 files |
+| Phase 13 P01      | 101          | 2 tasks | 2 files |
+| Phase 13 P02      | 208          | 2 tasks | 4 files |
+| Phase 14 P01      | 102          | 2 tasks | 2 files |
+| Phase 14 P02      | 109          | 2 tasks | 4 files |
+| Phase 14 P03      | 129          | 2 tasks | 2 files |
+| Phase 14 P04      | 75           | 1 tasks | 2 files |
+| Phase 14 P04      | 75           | 1 tasks | 2 files |
+| Phase 15 P01      | 228          | 3 tasks | 4 files |
+| Phase 15 P02      | 125          | 3 tasks | 4 files |
+| Phase 16 P01      | 132          | 2 tasks | 5 files |
+| Phase 16 P02      | 176          | 2 tasks | 4 files |
+| Phase quick-2 P01 | 72           | 1 tasks | 1 files |
 
 ## Archived
 
@@ -75,11 +81,13 @@ Milestones:
 ## Accumulated Context
 
 ### Production Environment
+
 - App: https://quote-flow-one.vercel.app (Vercel fra1 + Neon EU Central)
 - Widget: quote-flow@0.1.0 on npm
 - Codebase: 7,173 LOC TypeScript
 
 ### Technical Decisions for v1.2
+
 - Reusable option groups with price modifiers (flexible add-on pricing)
 - Percentage modifiers from base price, non-compounding (predictable calculations)
 - Integer (cents) arithmetic for all price calculations (avoid floating-point errors)
@@ -113,8 +121,16 @@ Milestones:
 - Acknowledgment-only for customer_redact (Phase 15-01: app stores no customer PII)
 - Enqueue async jobs for GDPR webhooks (Phase 15-02: 200ms response time vs synchronous deletion)
 - Vercel Cron with 10 jobs per invocation (Phase 15-02: 600 jobs/hour capacity)
+- SEO checks disabled for Lighthouse CI (Phase 16-01: embedded Shopify app, not public-facing)
+- Playwright over Puppeteer for screenshot automation (Phase 16-02: better CI support, active development)
+- Screenshot dimensions at exact Shopify requirements (Phase 16-02: 1600x900px for app listings)
+- [FILL_IN] placeholders for test credentials (Phase 16-02: avoid committing actual secrets to repository)
+- Desktop preset with minimal throttling for performance testing (Phase 16-01: realistic admin environment)
+- Performance threshold 0.8 for Lighthouse (Phase 16-01: accounts for Shopify 10-point degradation rule)
+- 3-run averaging for Lighthouse baselines (Phase 16-01: consistent regression detection)
 
 ### Known Technical Debt
+
 - Billing gates disabled for testing (TODO markers in `billing.server.ts`)
 - In-memory rate limiting (Redis migration path documented for multi-instance)
 - `use_legacy_install_flow = true` required for proper offline session tokens
@@ -122,9 +138,10 @@ Milestones:
 
 ### Quick Tasks Completed
 
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 001 | Rename widget npm package from @gjrkdk/pricing-matrix-widget to @gjrkdk/quote-flow | 2026-02-08 | 4e5f1cc | [001-rename-widget-package](./quick/001-rename-widget-package/) |
+| #   | Description                                                                        | Date       | Commit  | Directory                                                                            |
+| --- | ---------------------------------------------------------------------------------- | ---------- | ------- | ------------------------------------------------------------------------------------ |
+| 001 | Rename widget npm package from @gjrkdk/pricing-matrix-widget to @gjrkdk/quote-flow | 2026-02-08 | 4e5f1cc | [001-rename-widget-package](./quick/001-rename-widget-package/)                      |
+| 002 | Create privacy policy page at /privacy for App Store submission                    | 2026-02-13 | 4a03fe7 | [002-create-privacy-policy-url](./quick/2-create-privacy-policy-url-that-is-needed/) |
 
 ### Blockers/Concerns
 
@@ -132,9 +149,10 @@ None yet.
 
 ## Session Continuity
 
-**Last session:** 2026-02-13
-**Stopped at:** v1.2 complete - Phase 16 removed, all phases executed
+**Last session:** 2026-02-13T10:28:35.266Z
+**Stopped at:** Completed quick task 2: Privacy policy page
 **Resume file:** None
 
 ---
-*State tracked since: 2026-02-03*
+
+_State tracked since: 2026-02-03_
