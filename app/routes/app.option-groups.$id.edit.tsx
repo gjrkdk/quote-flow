@@ -3,7 +3,6 @@ import { json } from "@remix-run/node";
 import { useLoaderData, useNavigate, useFetcher } from "@remix-run/react";
 import {
   Page,
-  Layout,
   Card,
   TextField,
   Select,
@@ -264,6 +263,10 @@ export default function EditOptionGroup() {
   const [selectedProductId, setSelectedProductId] = useState("");
   const [capError, setCapError] = useState<string | null>(null);
 
+  // Banner state (auto-dismiss)
+  const [showSaveBanner, setShowSaveBanner] = useState(false);
+  const [showSaveError, setShowSaveError] = useState<string | null>(null);
+
   const isSubmitting = fetcher.state === "submitting" || fetcher.state === "loading";
   const actionData = fetcher.data;
   const assignActionData = assignFetcher.data;
@@ -339,267 +342,251 @@ export default function EditOptionGroup() {
     }
   }, [assignActionData]);
 
+  // Handle save response (auto-dismiss banners)
+  useEffect(() => {
+    if (actionData && "success" in actionData && actionData.success) {
+      setShowSaveBanner(true);
+      setShowSaveError(null);
+      const timer = setTimeout(() => setShowSaveBanner(false), 4000);
+      return () => clearTimeout(timer);
+    }
+    if (actionData && "error" in actionData) {
+      setShowSaveError(String(actionData.error));
+      setShowSaveBanner(false);
+    }
+  }, [actionData]);
+
   return (
     <Page
       title={name}
       backAction={{ onAction: () => navigate("/app/option-groups") }}
+      primaryAction={
+        <Button
+          variant="primary"
+          onClick={handleSubmit}
+          loading={isSubmitting}
+          disabled={!name.trim() || choices.length === 0 || isSubmitting}
+        >
+          Save
+        </Button>
+      }
     >
-      <Layout>
-        {/* Success banner */}
-        {actionData && "success" in actionData && actionData.success && (
-          <Layout.Section>
-            <Banner tone="success">
-              Option group saved successfully
-            </Banner>
-          </Layout.Section>
+      <BlockStack gap="400">
+        {showSaveError && (
+          <Banner tone="critical" onDismiss={() => setShowSaveError(null)}>{showSaveError}</Banner>
         )}
 
-        {/* Error banner */}
-        {actionData && "error" in actionData && (
-          <Layout.Section>
-            <Banner tone="critical">
-              {actionData.error}
-            </Banner>
-          </Layout.Section>
+        {showSaveBanner && (
+          <Banner tone="success" onDismiss={() => setShowSaveBanner(false)}>Option group saved successfully</Banner>
         )}
-
-        {/* Product count info */}
-        <Layout.Section>
-          <Text as="p" tone="subdued">
-            Used by {loaderData.optionGroup.productCount} products
-          </Text>
-        </Layout.Section>
 
         {/* Group details card */}
-        <Layout.Section>
-          <Card>
-            <BlockStack gap="400">
-              <TextField
-                label="Group name"
-                value={name}
-                onChange={setName}
-                autoComplete="off"
-                maxLength={100}
-                placeholder="e.g., Material, Size, Finish"
-                requiredIndicator
-                helpText="Choose a descriptive name for this option group"
-              />
+        <Card>
+          <BlockStack gap="400">
+            <TextField
+              label="Group name"
+              value={name}
+              onChange={setName}
+              autoComplete="off"
+              maxLength={100}
+              placeholder="e.g., Material, Size, Finish"
+              requiredIndicator
+              helpText="Choose a descriptive name for this option group"
+            />
 
-              <Select
-                label="Requirement"
-                options={[
-                  { label: "Optional - customers can skip", value: "OPTIONAL" },
-                  { label: "Required - customers must select", value: "REQUIRED" },
-                ]}
-                value={requirement}
-                onChange={(value) => setRequirement(value as "REQUIRED" | "OPTIONAL")}
-                helpText={
-                  requirement === "OPTIONAL"
-                    ? "Customers can skip this option. You can set a default choice below."
-                    : "Customers must select one of the choices for this option."
-                }
-              />
-            </BlockStack>
-          </Card>
-        </Layout.Section>
+            <Select
+              label="Requirement"
+              options={[
+                { label: "Optional - customers can skip", value: "OPTIONAL" },
+                { label: "Required - customers must select", value: "REQUIRED" },
+              ]}
+              value={requirement}
+              onChange={(value) => setRequirement(value as "REQUIRED" | "OPTIONAL")}
+              helpText={
+                requirement === "OPTIONAL"
+                  ? "Customers can skip this option. You can set a default choice below."
+                  : "Customers must select one of the choices for this option."
+              }
+            />
+          </BlockStack>
+        </Card>
 
         {/* Choices card */}
-        <Layout.Section>
-          <Card>
-            <BlockStack gap="400">
-              <InlineStack align="space-between" blockAlign="center">
-                <Text as="h2" variant="headingMd">
-                  Choices
-                </Text>
-                <Button
-                  onClick={addChoice}
-                  disabled={choices.length >= 20}
-                >
-                  Add choice
-                </Button>
-              </InlineStack>
-
-              {choices.length >= 20 && (
-                <Banner tone="warning">
-                  Maximum 20 choices per group.
-                </Banner>
-              )}
-
-              <BlockStack gap="300">
-                {choices.map((choice, index) => (
-                  <Card key={index}>
-                    <BlockStack gap="300">
-                      <InlineStack align="space-between" blockAlign="center">
-                        <Text as="p" variant="bodyMd" fontWeight="semibold">
-                          Choice {index + 1}
-                        </Text>
-                        {choices.length > 1 && (
-                          <Button
-                            variant="plain"
-                            tone="critical"
-                            onClick={() => removeChoice(index)}
-                          >
-                            Remove
-                          </Button>
-                        )}
-                      </InlineStack>
-
-                      <TextField
-                        label="Label"
-                        value={choice.label}
-                        onChange={(value) => updateChoice(index, "label", value)}
-                        autoComplete="off"
-                        maxLength={100}
-                        placeholder="e.g., Premium Glass, Standard Glass"
-                        requiredIndicator
-                      />
-
-                      <Select
-                        label="Modifier type"
-                        options={[
-                          { label: "Fixed amount (e.g., +$5.00)", value: "FIXED" },
-                          { label: "Percentage (e.g., +10%)", value: "PERCENTAGE" },
-                        ]}
-                        value={choice.modifierType}
-                        onChange={(value) =>
-                          updateChoice(index, "modifierType", value as "FIXED" | "PERCENTAGE")
-                        }
-                      />
-
-                      <TextField
-                        label="Modifier value"
-                        type="number"
-                        value={String(choice.modifierValue)}
-                        onChange={(value) => {
-                          const parsed = parseInt(value, 10);
-                          updateChoice(index, "modifierValue", isNaN(parsed) ? 0 : parsed);
-                        }}
-                        autoComplete="off"
-                        helpText={
-                          choice.modifierType === "FIXED"
-                            ? "Enter amount in cents (500 = $5.00). Negative values allowed for discounts."
-                            : "Enter percentage in basis points (1000 = 10%). Negative values allowed for discounts."
-                        }
-                      />
-
-                      {requirement === "OPTIONAL" && (
-                        <Checkbox
-                          label="Set as default choice"
-                          checked={choice.isDefault}
-                          onChange={(checked) => updateChoice(index, "isDefault", checked)}
-                          helpText="Optional groups can have one default choice pre-selected"
-                        />
-                      )}
-                    </BlockStack>
-                  </Card>
-                ))}
-              </BlockStack>
-            </BlockStack>
-          </Card>
-        </Layout.Section>
-
-        {/* Action buttons */}
-        <Layout.Section>
-          <InlineStack gap="300" align="end">
-            <Button onClick={() => navigate("/app/option-groups")}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleSubmit}
-              loading={isSubmitting}
-              disabled={!name.trim() || choices.length === 0 || isSubmitting}
-            >
-              Save
-            </Button>
-          </InlineStack>
-        </Layout.Section>
-
-        {/* Product assignment section */}
-        <Layout.Section>
-          <Card>
-            <BlockStack gap="400">
+        <Card>
+          <BlockStack gap="400">
+            <InlineStack align="space-between" blockAlign="center">
               <Text as="h2" variant="headingMd">
-                Assigned Products
+                Choices
               </Text>
+              <Button
+                onClick={addChoice}
+                disabled={choices.length >= 20}
+              >
+                Add choice
+              </Button>
+            </InlineStack>
 
-              {/* Cap error banner */}
-              {capError && (
-                <Banner tone="critical">
-                  {capError}
-                </Banner>
-              )}
+            {choices.length >= 20 && (
+              <Banner tone="warning">
+                Maximum 20 choices per group.
+              </Banner>
+            )}
 
-              {/* Assignment controls */}
-              <InlineStack gap="300" blockAlign="end">
-                <div style={{ flexGrow: 1 }}>
-                  <Select
-                    label="Assign to product"
-                    labelHidden
-                    options={[
-                      { label: "Select a product to assign", value: "" },
-                      ...loaderData.availableProducts.map((p) => ({
-                        label: p.productTitle,
-                        value: p.productId,
-                      })),
-                    ]}
-                    value={selectedProductId}
-                    onChange={setSelectedProductId}
-                  />
-                </div>
-                <Button
-                  onClick={handleAssignProduct}
-                  disabled={!selectedProductId || isAssigning}
-                  loading={isAssigning}
-                >
-                  Assign
-                </Button>
-              </InlineStack>
-
-              {/* Product list */}
-              {loaderData.assignedProducts.length > 0 ? (
-                <BlockStack gap="300">
-                  {loaderData.assignedProducts.map((product) => (
-                    <Card key={product.productId}>
-                      <InlineStack align="space-between" blockAlign="center">
-                        <BlockStack gap="100">
-                          <InlineStack gap="200" blockAlign="center">
-                            <Text as="p" variant="bodyMd" fontWeight="semibold">
-                              {product.productTitle}
-                            </Text>
-                            {product.groupCount >= 5 && (
-                              <Badge tone="warning">At limit</Badge>
-                            )}
-                          </InlineStack>
-                          <Text as="p" tone="subdued">
-                            {product.groupCount} option {product.groupCount === 1 ? "group" : "groups"} assigned
-                          </Text>
-                        </BlockStack>
+            <BlockStack gap="300">
+              {choices.map((choice, index) => (
+                <Card key={index}>
+                  <BlockStack gap="300">
+                    <InlineStack align="space-between" blockAlign="center">
+                      <Text as="p" variant="bodyMd" fontWeight="semibold">
+                        Choice {index + 1}
+                      </Text>
+                      {choices.length > 1 && (
                         <Button
                           variant="plain"
                           tone="critical"
-                          onClick={() => handleUnassignProduct(product.productId)}
+                          onClick={() => removeChoice(index)}
                         >
                           Remove
                         </Button>
-                      </InlineStack>
-                    </Card>
-                  ))}
-                </BlockStack>
-              ) : (
-                <Text as="p" tone="subdued">
-                  No products assigned. Select a product above to assign this option group.
-                </Text>
-              )}
+                      )}
+                    </InlineStack>
 
-              {/* Help text */}
-              <Text as="p" tone="subdued">
-                Groups are displayed alphabetically by name on the product page.
-              </Text>
+                    <TextField
+                      label="Label"
+                      value={choice.label}
+                      onChange={(value) => updateChoice(index, "label", value)}
+                      autoComplete="off"
+                      maxLength={100}
+                      placeholder="e.g., Premium Glass, Standard Glass"
+                      requiredIndicator
+                    />
+
+                    <Select
+                      label="Modifier type"
+                      options={[
+                        { label: "Fixed amount (e.g., +$5.00)", value: "FIXED" },
+                        { label: "Percentage (e.g., +10%)", value: "PERCENTAGE" },
+                      ]}
+                      value={choice.modifierType}
+                      onChange={(value) =>
+                        updateChoice(index, "modifierType", value as "FIXED" | "PERCENTAGE")
+                      }
+                    />
+
+                    <TextField
+                      label="Modifier value"
+                      type="number"
+                      value={String(choice.modifierValue)}
+                      onChange={(value) => {
+                        const parsed = parseInt(value, 10);
+                        updateChoice(index, "modifierValue", isNaN(parsed) ? 0 : parsed);
+                      }}
+                      autoComplete="off"
+                      helpText={
+                        choice.modifierType === "FIXED"
+                          ? "Enter amount in cents (500 = $5.00). Negative values allowed for discounts."
+                          : "Enter percentage in basis points (1000 = 10%). Negative values allowed for discounts."
+                      }
+                    />
+
+                    {requirement === "OPTIONAL" && (
+                      <Checkbox
+                        label="Set as default choice"
+                        checked={choice.isDefault}
+                        onChange={(checked) => updateChoice(index, "isDefault", checked)}
+                        helpText="Optional groups can have one default choice pre-selected"
+                      />
+                    )}
+                  </BlockStack>
+                </Card>
+              ))}
             </BlockStack>
-          </Card>
-        </Layout.Section>
-      </Layout>
+          </BlockStack>
+        </Card>
+
+        {/* Product assignment section */}
+        <Card>
+          <BlockStack gap="400">
+            <Text as="h2" variant="headingMd">
+              Assigned Products
+            </Text>
+
+            {/* Cap error banner */}
+            {capError && (
+              <Banner tone="critical">
+                {capError}
+              </Banner>
+            )}
+
+            {/* Assignment controls */}
+            <InlineStack gap="300" blockAlign="end">
+              <div style={{ flexGrow: 1 }}>
+                <Select
+                  label="Assign to product"
+                  labelHidden
+                  options={[
+                    { label: "Select a product to assign", value: "" },
+                    ...loaderData.availableProducts.map((p) => ({
+                      label: p.productTitle,
+                      value: p.productId,
+                    })),
+                  ]}
+                  value={selectedProductId}
+                  onChange={setSelectedProductId}
+                />
+              </div>
+              <Button
+                onClick={handleAssignProduct}
+                disabled={!selectedProductId || isAssigning}
+                loading={isAssigning}
+              >
+                Assign
+              </Button>
+            </InlineStack>
+
+            {/* Product list */}
+            {loaderData.assignedProducts.length > 0 ? (
+              <BlockStack gap="300">
+                {loaderData.assignedProducts.map((product) => (
+                  <Card key={product.productId}>
+                    <InlineStack align="space-between" blockAlign="center">
+                      <BlockStack gap="100">
+                        <InlineStack gap="200" blockAlign="center">
+                          <Text as="p" variant="bodyMd" fontWeight="semibold">
+                            {product.productTitle}
+                          </Text>
+                          {product.groupCount >= 5 && (
+                            <Badge tone="warning">At limit</Badge>
+                          )}
+                        </InlineStack>
+                        <Text as="p" tone="subdued">
+                          {product.groupCount} option {product.groupCount === 1 ? "group" : "groups"} assigned
+                        </Text>
+                      </BlockStack>
+                      <Button
+                        variant="plain"
+                        tone="critical"
+                        onClick={() => handleUnassignProduct(product.productId)}
+                      >
+                        Remove
+                      </Button>
+                    </InlineStack>
+                  </Card>
+                ))}
+              </BlockStack>
+            ) : (
+              <Text as="p" tone="subdued">
+                No products assigned. Select a product above to assign this option group.
+              </Text>
+            )}
+
+            {/* Help text */}
+            <Text as="p" tone="subdued">
+              Groups are displayed alphabetically by name on the product page.
+            </Text>
+          </BlockStack>
+        </Card>
+      </BlockStack>
     </Page>
   );
 }
