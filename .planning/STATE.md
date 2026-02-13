@@ -77,6 +77,7 @@ Milestones:
 | 003 | Add ability to edit matrix title after creation via inline edit UI                | 2026-02-13 | 0090b4d | [003-add-ability-to-edit-matrix-title](./quick/3-add-ability-to-edit-matrix-title-after-c/)      |
 | 004 | Make matrix list items bigger using ResourceList instead of condensed IndexTable   | 2026-02-13 | e509ea9 | [004-make-matrix-list-items-bigger](./quick/4-make-the-created-matrix-list-items-bigge/)         |
 | 005 | Show Duplicate and Delete actions always visible on matrix and option group cards  | 2026-02-13 | 881fe38 | [005-show-duplicate-delete-actions-always-vis](./quick/5-show-duplicate-delete-actions-always-vis/) |
+| 006 | Make option group edit page match matrix edit page (layout, save button, inline title editing) | 2026-02-13 | 7bf998d | [006-make-option-group-edit-page-match-matrix](./quick/6-make-option-group-edit-page-match-matrix/) |
 
 ### Blockers/Concerns
 
@@ -85,7 +86,7 @@ None.
 ## Session Continuity
 
 **Last session:** 2026-02-13
-**Stopped at:** Completed quick task 005 - Show Duplicate and Delete actions always visible
+**Stopped at:** Completed quick task 006 - Make option group edit page match matrix edit page
 **Resume file:** None
 
 ---
