@@ -254,33 +254,44 @@ export default function MatricesIndex() {
               <ResourceItem
                 id={matrix.id}
                 onClick={() => handleRowClick(matrix.id)}
-                shortcutActions={[
-                  {
-                    content: "Duplicate",
-                    onAction: () => handleDuplicateClick(matrix.id),
-                  },
-                  {
-                    content: "Delete",
-                    onAction: () => handleDeleteClick(matrix),
-                  },
-                ]}
               >
-                <Text as="h3" variant="headingSm" fontWeight="bold">
-                  {matrix.name}
-                </Text>
-                <Box paddingBlockStart="100">
-                  <InlineStack gap="400">
-                    <Text as="span" variant="bodySm" tone="subdued">
-                      {matrix.widthCount} x {matrix.heightCount} grid
+                <InlineStack align="space-between" blockAlign="center">
+                  <BlockStack gap="100">
+                    <Text as="h3" variant="headingSm" fontWeight="bold">
+                      {matrix.name}
                     </Text>
-                    <Text as="span" variant="bodySm" tone="subdued">
-                      {matrix.productCount} {matrix.productCount === 1 ? "product" : "products"}
-                    </Text>
-                    <Text as="span" variant="bodySm" tone="subdued">
-                      Edited {new Date(matrix.updatedAt).toLocaleDateString()}
-                    </Text>
-                  </InlineStack>
-                </Box>
+                    <InlineStack gap="400">
+                      <Text as="span" variant="bodySm" tone="subdued">
+                        {matrix.widthCount} x {matrix.heightCount} grid
+                      </Text>
+                      <Text as="span" variant="bodySm" tone="subdued">
+                        {matrix.productCount} {matrix.productCount === 1 ? "product" : "products"}
+                      </Text>
+                      <Text as="span" variant="bodySm" tone="subdued">
+                        Edited {new Date(matrix.updatedAt).toLocaleDateString()}
+                      </Text>
+                    </InlineStack>
+                  </BlockStack>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <InlineStack gap="200">
+                      <Button
+                        variant="plain"
+                        size="slim"
+                        onClick={() => handleDuplicateClick(matrix.id)}
+                      >
+                        Duplicate
+                      </Button>
+                      <Button
+                        variant="plain"
+                        size="slim"
+                        tone="critical"
+                        onClick={() => handleDeleteClick(matrix)}
+                      >
+                        Delete
+                      </Button>
+                    </InlineStack>
+                  </div>
+                </InlineStack>
               </ResourceItem>
             )}
           />
