@@ -22,6 +22,6 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm install -g @lhci/cli@0.15.x
+      - run: npm install -g @shopify/cli @lhci/cli@0.15.x
       - run: npm run build
       - run: lhci autorun
